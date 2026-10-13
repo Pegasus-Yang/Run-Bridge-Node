@@ -92,9 +92,9 @@ class BrowserServer:
 
         :returns: 仅供 Node 内部使用的准备信息。
         """
-        temporary_root = self.config.runtime_directory / "sessions"
-        temporary_root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        self.temporary_directory = Path(tempfile.mkdtemp(prefix="browser-", dir=temporary_root))
+        # Chromium 的 SingletonSocket 受 UNIX 路径长度限制，运行目录不能作为 TMPDIR。
+        temporary_root = Path("/tmp") if os.name == "posix" else Path(tempfile.gettempdir())
+        self.temporary_directory = Path(tempfile.mkdtemp(prefix="rb-", dir=temporary_root))
         environment = runtime_environment(directory=self.config.runtime_directory)
         environment["TMPDIR"] = str(self.temporary_directory)
         self.process = await asyncio.create_subprocess_exec(self.config.node_executable, str(RUNTIME_SOURCE / "server.mjs"), str(self.config.runtime_directory), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, env=environment, start_new_session=os.name == "posix")

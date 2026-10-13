@@ -59,6 +59,7 @@ class PlaywrightExecutor:
         self.ready = False
         self.quarantined = False
         self.node_version = None
+        self.managed_visual = False
         self.quarantine_file = config.runtime_directory / f"cleanup-unknown-{identity.node_id}.json"
 
     async def probe(self) -> None:
@@ -72,6 +73,7 @@ class PlaywrightExecutor:
         try:
             metadata = await server.start()
             self.node_version = metadata["node_version"]
+            self.managed_visual = metadata.get("managed_visual") is True
             self.ready = True
         except (OSError, ValueError, TimeoutError):
             self.ready = False
@@ -102,6 +104,8 @@ class PlaywrightExecutor:
         view.resources.append(ResourceCapability(resource_id=self.config.resource_id, backend="playwright", kind="MANAGED_CHROMIUM", readiness="READY" if self.ready and not self.quarantined else "UNAVAILABLE", occupancy="UNKNOWN" if self.quarantined else ("BUSY" if self.active is not None else "FREE")))
         if self.node_version is not None:
             view.host["playwright_node_version"] = self.node_version
+        if self.ready and self.managed_visual:
+            view.host["managed_visual"] = "cdp-png"
         return view
 
     async def start(self, *, message: SessionOpen, send, publish) -> None:
