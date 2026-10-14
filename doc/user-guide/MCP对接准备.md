@@ -4,6 +4,12 @@
 
 MCP 服务部署在 Hub。当前支持 26 个 MCP 工具，包括受管理 Chromium、原子交互、固定采集、页面/frame、弹窗、上传、截图、持续画面和释放。Node 0.5.0 沿用控制合同版本 1，不需要安装 MCP 或 Agent SDK。
 
+配套 Hub 0.5.1 修复持久请求恢复及上传边界；DSH 插件 0.12.1 已适配新旧查询合同。Node 运行代码与包版本仍为 0.5.0，无需为这次 Hub 修复增加本机配置。Hub 数据库升级到 v3，升级前须一致性备份；Node 身份及浏览器数据位置保持原样。
+
+调用方应在启动时保存唯一 request_id。browser_sessions 按同一 grant/node/request 返回 request 状态及已分配会话，准备或连接失败后也能找回 session_id。仅 FAILED、session_id=null、execution_outcome=NOT_STARTED 且 sessions 为空可确认未分配；NOT_FOUND、PENDING 和 UNKNOWN 不能直接解除隔离。非空 session_id 必须与唯一 sessions 项及 grant/node 身份一致，再核对实际技术终态和 cleanup=COMPLETE。
+
+每有效许可最多保留 1024 个不同请求，Hub 最多 64 个在途请求。MCP HTTP 请求体上限为 8 MiB，上传文件解码后合计最多 4 MiB；超限在操作文件输入前拒绝。固定 DOM 采集仅支持主页面，256 KiB 限额在传回 Hub 后检查；CDP 初始化失败需要显式重新选择页面，这些边界不会由 Node visual extra 改变。
+
 ## 1. 所有者准备资源
 
 按受管理 Chromium 指南准备 Node.js 和 Playwright **1.63.0** 运行时、完成登记，配置 `runtime_directory`，然后启动：
