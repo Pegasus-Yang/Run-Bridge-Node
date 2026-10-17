@@ -335,8 +335,8 @@ def test_independent_example_runs_and_releases(browser_node):
         raise AssertionError("独立示例输出含秘密，内容已隐藏")
     private = runtime.directory / ".runbridge/access-playwright.json"
     write_private_json(path=private, values=json.loads((runtime.directory / "access.json").read_text()))
-    guide = (NODE_PROJECT / "doc/user-guide/Playwright快速开始.md").read_text()
-    example = "doc/reference/examples/执行会话调用.py"
+    guide = (NODE_PROJECT / "doc/development/调用方联调.md").read_text()
+    example = "doc/development/examples/执行会话调用.py"
     assert example in guide
     documented = subprocess.run([str(NODE_PROJECT / ".venv/bin/python"), str(NODE_PROJECT / example), "--access-file", str(private), "--resource-id", "chromium", "--screenshot", str(runtime.directory / "documented.png")], cwd=runtime.directory, env=runtime.environment, capture_output=True, text=True, timeout=40)
     if documented.returncode != 0:

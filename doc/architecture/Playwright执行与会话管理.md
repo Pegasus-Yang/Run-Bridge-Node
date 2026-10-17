@@ -1,6 +1,6 @@
 # RunBridge Playwright 执行与会话管理
 
-[文档导航](../README.md) · [会话接口](../reference/会话接口与原生连接.md) · [阶段验收](../project/Playwright阶段验收记录.md)
+[文档导航](../README.md) · [会话接口](../development/protocol/会话接口与原生连接.md) · [阶段验收](../project/Playwright阶段验收记录.md)
 
 当前实现对应 Hub 0.5.1 / Node 0.5.0；本文说明受管理 Chromium 路线，已有 Chrome 的路线见[Chrome 复用与授权清理](Chrome复用与授权清理.md)。在 R0/R1 之上完成 R2 的资源/会话部分和 R3 的受管理 Chromium 原生接入。R2 的独立业务 HTTP 执行、Appium/ADB 和容量压测未实施。本文件描述当前代码，定稿路线保留在 `doc/design/`。
 
@@ -36,7 +36,7 @@ Python SDK 与 npm Playwright 锁定 1.63.0；官方原生连接要求主、次�
 
 Node 不带 `--playwright-config` 或 `--chrome-config` 时保持 R1 控制模式，不开放浏览器资源。启用时每个 Node 提供一个资源位，默认 ID 为 `chromium`、类型为 `MANAGED_CHROMIUM`。本地实际启动并关闭一次浏览器后才报告 READY；安装目录存在不等于就绪。每次申请再启动一个新的受管理实例，Context/Page 的数量与操作由官方 SDK 决定。
 
-启动参数由节点所有者本地配置，以 Node.js `launchServer` 的字段名表示。调用许可不能上传 `executablePath`、环境变量或其他启动配置。`host`、`port`、信号管理由 Node 固定；不支持的配置键会明确校验失败。已支持字段和外层准备上限见[配置参考](../reference/会话接口与原生连接.md)。
+启动参数由节点所有者本地配置，以 Node.js `launchServer` 的字段名表示。调用许可不能上传 `executablePath`、环境变量或其他启动配置。`host`、`port`、信号管理由 Node 固定；不支持的配置键会明确校验失败。已支持字段和外层准备上限见[配置参考](../development/protocol/会话接口与原生连接.md)。
 
 Hub 在同一短临界区复核许可、节点代次、资源准备与占用，并先占用再发送启动命令。Node 再次检查本机资源。查询中的占用取节点报告与 Hub 当前预约的约束结果，不能依据迟到的 FREE 报告抢占正在准备的实例。
 
@@ -76,7 +76,7 @@ SQLite v3 沿用 `sessions` 保存公开状态、归属、代次与时间，并�
 
 已验证本机 macOS arm64、独立 Hub/Node 进程、官方 Python SDK 的 Browser/Context/Page/Locator、弹窗/新页面、路由回调、PNG、文件上传/下载、Trace、原生 TimeoutError、授权拒绝、资源冲突、撤销、租期和正常/异常重启。
 
-原生方法调用错误保持 SDK 原始内容；浏览器启动失败作为管理准备错误返回公开错误码，helper 不把可能含本地启动秘密的原始日志交付调用方。启动失败排查见[运行与排障](../deployment/Playwright运行与排障.md)。
+原生方法调用错误保持 SDK 原始内容；浏览器启动失败作为管理准备错误返回公开错误码，helper 不把可能含本地启动秘密的原始日志交付调用方。启动失败排查见[运行与排障](../deployment/运行与排障.md)。
 
 R4 Chrome CDP 的实际验收另见[Chrome 记录](../project/R4Chrome复用验收记录.md)。完整原生 SDK 矩阵仍以 macOS 为基线。Ubuntu ARM64 另已验证受管理 MCP 代表性交互和同页画面，见[DSH 联调](../project/DSH与受管理画面联调.md)；已有 Chrome 模式见[Ubuntu ARM64 与字体测试](../project/虚拟机Node跨机器验收记录.md)。扩展、Firefox/WebKit、独立 HTTP 执行、Appium、远程 TLS/NAT、Windows、完整 Linux 原生矩阵、超大输出/慢接收者压力和 100 在线/10 并发尚未验收。该矩阵证明代表性原生能力可用，不等于对 Playwright 所有方法逐项认证。
 

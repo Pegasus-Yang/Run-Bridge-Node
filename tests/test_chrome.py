@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-import re
 import signal
 import sqlite3
 import subprocess
@@ -316,15 +315,18 @@ def test_documented_chrome_examples_reuse_original_page(chrome_node):
         raise AssertionError("Chrome 示例执行失败，未回显可能含凭据的 SDK 原文")
     assert json.loads(completed.stdout)["reused_existing_page"] is True
     assert screenshot.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
-    guide = (NODE_PROJECT / "doc/user-guide/Chrome复用快速开始.md").read_text()
-    snippet = re.search(pattern=r"```python\n(.*?)\n```", string=guide, flags=re.S).group(1)
-    inline = runtime.directory / "reuse_inline.py"
-    inline.write_text(snippet)
-    documented = subprocess.run([executable(project=NODE_PROJECT, name="python"), str(inline), str(runtime.directory / "access.json"), context["url"]], cwd=NODE_PROJECT, capture_output=True, text=True, timeout=25)
+    guide = (NODE_PROJECT / "doc/development/调用方联调.md").read_text()
+    example = "doc/development/examples/执行会话调用.py"
+    assert example in guide
+    documented_screenshot = runtime.directory / "documented-chrome.png"
+    documented = subprocess.run(args=[executable(project=NODE_PROJECT, name="python"), str(NODE_PROJECT / example), "--access-file", str(runtime.directory / "access.json"), "--resource-id", "chrome", "--page-url", context["url"], "--screenshot", str(documented_screenshot)], cwd=NODE_PROJECT, capture_output=True, text=True, timeout=40)
     if documented.returncode != 0:
-        raise AssertionError("Chrome 指南的完整 Python 代码未通过实际连接验收")
-    assert json.loads(documented.stdout)["reused_existing_page"] is True
-    assert json.loads(documented.stdout)["title"] == "已有 Chrome 登录验收"
+        raise AssertionError("Chrome 开发联调示例未通过实际连接验收")
+    records = [json.loads(line) for line in documented.stdout.splitlines()]
+    assert records[1]["state"] == "ACTIVE"
+    assert records[1]["title"] == "已有 Chrome 登录验收"
+    assert records[-1]["cleanup"] == "COMPLETE"
+    assert documented_screenshot.read_bytes().startswith(b"\x89PNG")
     evidence(test_name="chrome_documented_examples", details={"standalone_example_executed": True, "guide_code_executed": True, "original_page_reused": True, "screenshot_verified": True})
 
 

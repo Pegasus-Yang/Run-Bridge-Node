@@ -1,85 +1,68 @@
-# 受管理 Chromium 快速开始
+# Node 受管理 Chromium
 
-[文档导航](../README.md) · [首次登记](快速开始.md) · [调用方指南](调用方对接与使用.md) · [运行与排障](../deployment/Playwright运行与排障.md)
+[文档导航](../README.md) · [Node 部署](../deployment/部署与运行.md) · [配置字段](../reference/部署配置与凭据.md) · [许可管理](快速开始.md)
 
-适用于 Hub 0.5.1 / Node 0.5.0 的受管理模式：Node 为每个执行会话启动一个独立 Chromium 服务，调用方通过官方 Playwright connect() 操作。需要复用已登录浏览器时选择[Chrome 模式](Chrome复用快速开始.md)；受管理模式不复用已有 Profile；普通 REST/SDK 会话不提供独立画面流，MCP 持有的页面支持持续 PNG。
+适用于 Node 0.5.0。Node 为每个会话启动独立 Chromium，并在释放时确认自建进程退出。先安装本项目 wheel、完成远程身份登记，后续在 Node 部署目录操作。
 
-先完成 Hub 启动和 Node 身份登记。以下在 Node 源码根目录运行，wheel 部署将命令前缀改为 .venv/bin/runbridge-node。
-
-## 1. 准备 Node.js/npm 与 Python 环境
+## 1. 准备 Node.js 和 npm
 
 ```bash
 node --version
 npm --version
-uv sync --locked --python 3.14 -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 ```
 
-Node.js/npm 是本模式的额外依赖；锁定 npm Playwright 1.63.0 的声明要求 Node.js >=20。调用方 Python SDK 使用已验收的 1.63.0，与服务主、次版本保持一致。source 的开发组已有 SDK，wheel 不自动安装它。
+需要 Node.js >=20 和 PATH 中的 npm。它们用于私有 npm Playwright 服务，与 Python 的 runbridge-node 角色不同。Node 不需要调用方的 Python Playwright SDK。
 
-## 2. 准备私有运行时与浏览器缓存
+## 2. 安装私有运行时
 
 ```bash
-uv run --locked --no-sync runbridge-node prepare-playwright --runtime-dir .runbridge/playwright
+.venv/bin/runbridge-node prepare-playwright --runtime-dir .runbridge/playwright --node-executable node
 ```
 
-这个命令使用包内 package-lock.json，通过 npm ci 安装私有 Playwright，并安装 Chromium。内容位于 .runbridge/playwright：node_modules、browsers、npm-cache 与后续 sessions 临时目录；不会卸载系统浏览器或复用其他项目共享缓存。
+命令使用包内锁文件安装 Playwright **1.63.0** 和 Chromium，在所选目录保存 `node_modules/`、`browsers/`、`npm-cache/`。浏览器本机库仍由设备环境准备；该命令不自动执行管理员级系统安装。
 
-同一锁文件目录可再次准备；若目录已有不同依赖文件，命令拒绝覆盖，选择独立新目录。源码不能只靠 Python 的 playwright install 替代这个 npm 服务运行时。
+已有不同依赖文件时会拒绝覆盖，使用新的独立运行时目录。不要把其他项目的缓存目录当成本项目运行时，也不要手改包内锁文件来绕过版本检查。
 
-浏览器仍依赖所在系统的本机库。prepare-playwright 不自动以管理员权限安装系统库；缺少依赖时按[官方浏览器部署说明](https://playwright.dev/docs/browsers#install-system-dependencies)处理。原生 SDK 的完整矩阵以 macOS arm64 为基线；Ubuntu ARM64 的 MCP 工具和同页画面已另有[DSH 联调记录](../project/DSH与受管理画面联调.md)，不能据此推及所有 Linux 原生方法。
+## 3. 编写本地启动配置
 
-## 3. 保存本地启动配置
-
-将下面 JSON 保存为 .runbridge/playwright.json，或复制[配置示例](../reference/examples/Playwright节点配置.json)：
+保存为 `.runbridge/playwright.json`：
 
 ```json
 {
   "runtime_directory": ".runbridge/playwright",
   "node_executable": "node",
   "resource_id": "chromium",
-  "launch_options": {"headless": true}
+  "launch_options": {
+    "headless": true
+  }
 }
 ```
 
-这些路径相对 Node 启动目录，node_executable 也可使用实际 Node.js 绝对路径。launch_options 使用 Node.js launchServer 的字段名，例如 headless、proxy、executablePath；允许字段与单位见[接口配置参考](../reference/会话接口与原生连接.md)。浏览器启动设置由所有者本地决定，调用方不能通过创建会话覆盖。
-
-## 4. 启动 Node
-
-正常停止先前的仅控制模式 Node，再启动：
-
 ```bash
-uv run --locked --no-sync runbridge-node run --config .runbridge/node.json --playwright-config .runbridge/playwright.json
+chmod 600 .runbridge/playwright.json
 ```
 
-保持终端运行。Node 会真实启动和关闭一次浏览器进行探测，再报告 READY/FREE。该探测没有调用方业务会话；后续每次会话重新启动一个本次独立实例。不带浏览器配置的 run 不开放资源，两个浏览器参数不能同时使用。
+配置示例也见 [Playwright 节点配置](../reference/examples/Playwright节点配置.json)。路径相对 Node 服务工作目录；使用 Node.js 绝对路径时，准备命令和 JSON 应选同一套运行时。全部字段、启动选项、代理和毫秒单位见[配置参考](../reference/部署配置与凭据.md)。
 
-## 5. 签发受管理资源许可
-
-在另一个终端：
+## 4. 启动资源并交付许可
 
 ```bash
-uv run --locked --no-sync runbridge-node grant --config .runbridge/node.json --resource-id chromium --expires-in 3600 --output .runbridge/playwright-access.json
-uv run --locked --no-sync runbridge-node inspect node_example --access-file .runbridge/playwright-access.json
+.venv/bin/runbridge-node run --config .runbridge/node.json --playwright-config .runbridge/playwright.json
 ```
 
-替换 node_example。预期 backend=playwright、kind=MANAGED_CHROMIUM、READY/FREE；版本来自 npm Playwright，不是 Chromium product 版本。取得访问文件的调用方不用取得本地 playwright.json 或 Node 身份。
-
-## 6. 执行默认无外网示例
+启动时 Node 会真实启动并关闭探测浏览器，再上报资源。保持服务终端，在另一个终端：
 
 ```bash
-uv run --locked --no-sync python doc/reference/examples/执行会话调用.py --access-file .runbridge/playwright-access.json --resource-id chromium --screenshot .runbridge/managed.png
+.venv/bin/runbridge-node grant --config .runbridge/node.json --resource-id chromium --expires-in 3600 --output .runbridge/playwright-access.json
+.venv/bin/runbridge-node inspect node_example --access-file .runbridge/playwright-access.json
 ```
 
-默认使用 data URL，申请 → 官方 connect() → 新建页面 → 读取标题/PNG → SDK 关闭 → HTTP 释放。成功显示 ACTIVE，最终 cleanup=COMPLETE；PNG 在调用方机器。
+替换实际节点 ID。预期后端 `playwright`、资源类型 `MANAGED_CHROMIUM`、`READY/FREE`。返回版本是 npm Playwright 的版本，不是 Chromium 产品版本。
 
-访问业务系统时增加 --url http://your-internal-service/，该地址通过 Node 浏览器的网络访问。动作、Locator、Context/Page 参数及业务断言直接使用官方 SDK，完整接入与自有脚本说明见[调用方指南](调用方对接与使用.md)。
+把访问文件和资源 ID 交给调用方。普通 SDK／HTTP 调用由 Hub 项目文档维护；给 Agent 准备资源见[MCP 对接](MCP对接准备.md)。调用方自己的 SDK 主次版本须与服务匹配，已验收版本为 1.63.0。
 
-Node 源码的原 examples/playwright_smoke.py 继续保留；它依赖本机安装的 Node 包。上述文档示例不导入 RunBridge 内部代码，可以复制到独立调用方项目运行。
+## 5. 生命周期与输出
 
-## 7. 输出与结束
+每个资源同一时刻供一个会话使用；调用方申请会话后 Node 新建独立浏览器，不复用已有 Profile。普通 SDK 受管理会话没有独立画面流；MCP 持有的页面可由服务端提供同页画面，Node 无需 Browscreen。
 
-截图、download.save_as() 和 tracing.stop(path=...) 按远程 SDK 语义保存到调用方；本地 launch_options 指定的输出目录属于 Node。完整文件传输能力按官方协议工作，实际已验收项见[历史 Playwright 验收](../project/Playwright阶段验收记录.md)。
-
-正常释放包含 Node 自建 helper/browser 和本次临时目录清理，不删除所有者指定的外部输出目录。一个资源同一时刻只供一个会话使用；尚未确认清理时不能当作 FREE 抢占。cleanup=UNKNOWN 时按[排障指南](../deployment/Playwright运行与排障.md)核查，不通过清空身份或运行时目录解决。
-
-普通 REST/SDK 受管理会话没有独立画面流，安装 Node visual extra 也不改变这一点。通过 Hub MCP 启动的页面支持同页持续 PNG，无需 Browscreen；已有 Chrome 使用 Node/Browscreen 路线。自己的 SDK 也可主动 screenshot，具体入口见[画面指南](浏览器画面流接入.md)。
+Node 本地启动选项中的目录属于本设备；调用方截图、下载保存和 tracing 输出按远程 SDK 语义保存在调用方。正常释放还包含 helper／browser 退出及本次临时目录清理。cleanup 未确认时按[排障](../deployment/运行与排障.md)核对，不删除身份或共享运行时。
