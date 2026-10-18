@@ -18,11 +18,36 @@ Node.js 的 `node` 与本项目 Python 命令 `runbridge-node` 不同。上述�
 
 启动前确认所选 Node.js 的 `--version` 能正常返回；命令路径存在不代表其动态库和运行环境完整。准备工具还要求所选环境中的 `npm --version` 正常。
 
-**为什么受管理模式需要 npm Playwright？**它需要向远程调用方提供 Playwright 原生协议入口：Node.js 的公开 `chromium.launchServer()` 新建浏览器并返回 WebSocket 地址，RunBridge 通过 Hub 授权和转发连接，调用方直接使用官方 SDK 的 Browser／Context／Page 等对象。它与浏览器插件无关，也不会把任意已打开的 Chrome 转成这种服务。
+### 为什么使用 launchServer，与 Python launch 有什么差别
 
-**项目支持 Python Playwright。**Python 调用方通过 `chromium.connect()` 连接上述服务，Hub 的 MCP 工具内部也使用 Python SDK。这里需要 JavaScript 的是服务端 `launchServer()` API；Python 公开 API 的 `launch()` 只返回本次调用持有的 Browser，没有对应的公开 `launch_server()`，不能仅替换 Python 依赖就取得同一种远程入口。调用方与服务的 Playwright 主次版本须匹配，见[Python 官方连接说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)和[Node.js 服务端说明](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-server)。
+受管理模式要解决的是：浏览器运行在 Node 设备上，另一台机器上的调用方仍能使用官方 Playwright SDK 操作它。因此，除了启动浏览器，还需要一个能接收远程 SDK 指令、返回结果和事件的服务，以及连接这个服务的地址。
 
-如果目标是复用**已有 Chrome**，选[Chrome 复用模式](Chrome复用快速开始.md)：转发其现有 CDP 入口，Python 调用方使用 `connect_over_cdp()`。这条路线不使用 `launchServer()`，Node 设备也不需要 Node.js/npm Playwright；其能力覆盖与原生协议连接不同，见[官方 CDP 说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect-over-cdp)。
+| 启动方式 | 得到什么 | 另一进程如何接入 |
+| --- | --- | --- |
+| Python `chromium.launch()` | 当前 Python 进程持有的 `Browser` 对象，可直接在该进程中操作浏览器 | 这次调用不提供供另一 SDK 进程连接的 Playwright WebSocket 服务地址 |
+| Node.js `chromium.launchServer()` | 启动浏览器和 Playwright 协议服务，返回 `BrowserServer`；其 `wsEndpoint()` 给出服务的 WebSocket 地址 | 另一进程的 SDK 使用 `chromium.connect()` 连接该服务，再取得操作远程浏览器的 `Browser` 对象 |
+
+**RunBridge 真正需要的是持续运行的协议服务及其连接地址。**例如，`wsEndpoint()` 可能返回 `ws://127.0.0.1:54321/随机路径`，端口和路径由运行时产生。这个地址指向 Playwright 的控制服务；它不是被访问网页的 URL，也不是 Chrome 的 CDP 调试地址。浏览器进程 ID 用于进程管理，版本号用于兼容性检查，两者都不能代替这个连接地址。`launch()` 返回的 `Browser` 则是当前进程中的 SDK 对象，不能把对象内容交给另一台机器就继续使用其中的活动连接。接口区别见 [launchServer 官方说明](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-server)和 [wsEndpoint 官方说明](https://playwright.dev/docs/api/class-browserserver#browser-server-ws-endpoint)。
+
+这里的“Playwright 原生协议”就是官方 SDK 与 Playwright 服务之间传递操作指令、对象标识、返回结果和事件的通信格式。例如，调用方执行 `page.goto(...)`，SDK 将操作转换成协议消息；Node 设备上的 Playwright 服务接收消息、驱动 Chromium，并将完成结果或错误发回。`Browser`、`Context`、`Page` 对象之间的关系及页面事件也通过这条连接同步。这样调用方就能继续使用官方 SDK，Hub 无需逐个实现导航、点击等自动化接口。
+
+本项目通过以下路径双向转发这些消息：
+
+```mermaid
+flowchart LR
+    A[调用方的官方 SDK] <--> B[Hub 授权会话入口]
+    B <--> C[Node 主动连接 Hub 的会话隧道]
+    C <--> D[Node 本机的 Playwright WebSocket 服务]
+    D <--> E[本次会话的 Chromium]
+```
+
+`launchServer()` 的服务只监听 Node 设备的 `127.0.0.1`。Node 主动建立到 Hub 的会话隧道，并在本机把隧道中的消息转发给该服务。远程调用方连接的是 Hub 提供的 `/v1/sessions/{session_id}/playwright` 会话入口，经过授权和转发后到达该服务。因此，调用方无需访问 Node 的本机地址，部署者也无需收集或手填随机端口和路径。操作结果、错误和浏览器事件沿原路返回。
+
+**项目支持 Python Playwright。**Python 调用方通过 `chromium.connect()` 取得控制上述远程浏览器的 `Browser`，Hub 的 MCP 工具内部也使用 Python SDK。需要 npm Playwright 的是 Node 设备上负责提供协议服务的这一环：当前 Python 公开 API 没有对应的 `launch_server()`，用 Python `launch()` 替换后，只启动了可由该 Python 进程操作的浏览器，还缺少供远程 SDK 接入的服务。要采用这种替代方案，仍须另外提供协议服务，或由项目另写远程操作接口和对象、事件转发机制。当前实现选择官方 `launchServer()` 提供的现成服务。它与浏览器插件无关，也不会把任意已打开的 Chrome 转成这种服务。
+
+调用方与服务的 Playwright 主版本和次版本须匹配，例如本版 npm Playwright 1.63.0 对应 Python Playwright 1.63.x，见 [Python 官方连接说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)。
+
+如果目标是复用**已有 Chrome**，选[Chrome 复用模式](Chrome复用快速开始.md)：转发 Chrome 自身提供的 CDP 调试入口，Python 调用方使用 `connect_over_cdp()`。这条路线不使用 `launchServer()`，Node 设备也不需要 Node.js/npm Playwright。CDP 是 Chromium 的调试协议，与上述 Playwright 服务使用的协议不同；官方说明通过 CDP 连接的能力覆盖低于 `connect()`，部分高级功能可能不能正常使用，因此当前两种模式分别提供，见[官方 CDP 说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect-over-cdp)。
 
 ## 2. 运行时准备方式只选一种
 
