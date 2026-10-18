@@ -6,7 +6,7 @@
 
 ## 推荐的统一启动文件
 
-[Node启动配置.yaml](Node启动配置.yaml) 包含 Hub、身份存放位置、登记文件和一种浏览器设置。替换真实地址与路径后，在其所在部署目录运行 `runbridge-node run --settings node.yaml`；首次自动登记并上线。身份仍由程序保存为 JSON，不需要手工从 YAML 抄出字段。
+[Node启动配置.yaml](Node启动配置.yaml) 逐字段注释了含义、默认值、首次启动要求、路径规则，并提供互斥的 Chrome 模式写法。替换真实地址与路径、保存为 `node.yaml` 后，在其所在部署目录运行 `runbridge-node run --settings node.yaml`；首次自动登记并上线。身份仍由程序保存为 JSON，不需要手工从 YAML 抄出字段。
 
 本地相对路径以 YAML 所在目录为基准。已有 npm Playwright 可直接指定其项目根目录；使用官方浏览器缓存时设置 `use_default_browser_cache: true`。Chrome 模式按[Chrome 指南](../../user-guide/Chrome复用快速开始.md)把实际授权端点写入同一文件。
 

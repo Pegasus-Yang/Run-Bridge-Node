@@ -18,7 +18,11 @@ Node.js 的 `node` 与本项目 Python 命令 `runbridge-node` 不同。上述�
 
 启动前确认所选 Node.js 的 `--version` 能正常返回；命令路径存在不代表其动态库和运行环境完整。准备工具还要求所选环境中的 `npm --version` 正常。
 
-**为什么还需要 npm Playwright？**受管理模式通过公开的 Node.js `chromium.launchServer()` 提供原生远程协议；Python 的 `connect()` 连接该服务。Python Playwright 安装在 `.venv` 中不能替代这个服务端 API；因此不把 Python Playwright 当作 Node 的必装依赖。调用方与服务的 Playwright 主次版本还必须匹配，见[官方连接约束](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)。
+**为什么受管理模式需要 npm Playwright？**它需要向远程调用方提供 Playwright 原生协议入口：Node.js 的公开 `chromium.launchServer()` 新建浏览器并返回 WebSocket 地址，RunBridge 通过 Hub 授权和转发连接，调用方直接使用官方 SDK 的 Browser／Context／Page 等对象。它与浏览器插件无关，也不会把任意已打开的 Chrome 转成这种服务。
+
+**项目支持 Python Playwright。**Python 调用方通过 `chromium.connect()` 连接上述服务，Hub 的 MCP 工具内部也使用 Python SDK。这里需要 JavaScript 的是服务端 `launchServer()` API；Python 公开 API 的 `launch()` 只返回本次调用持有的 Browser，没有对应的公开 `launch_server()`，不能仅替换 Python 依赖就取得同一种远程入口。调用方与服务的 Playwright 主次版本须匹配，见[Python 官方连接说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)和[Node.js 服务端说明](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-server)。
+
+如果目标是复用**已有 Chrome**，选[Chrome 复用模式](Chrome复用快速开始.md)：转发其现有 CDP 入口，Python 调用方使用 `connect_over_cdp()`。这条路线不使用 `launchServer()`，Node 设备也不需要 Node.js/npm Playwright；其能力覆盖与原生协议连接不同，见[官方 CDP 说明](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect-over-cdp)。
 
 ## 2. 运行时准备方式只选一种
 
