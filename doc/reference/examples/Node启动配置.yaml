@@ -1,64 +1,30 @@
-# RunBridge Node 统一启动配置。保存为 node.yaml 后运行：
-# .venv/bin/runbridge-node run --settings node.yaml
-# 使用 UTF-8 和空格缩进；路径字段相对本文件所在目录，不展开 ~、$HOME。
-# 下方填写的是示例值；只有明确标为“默认”的值才是省略字段时的行为。
-
-# Hub HTTP(S) 基址：默认 null（不配置）。首次创建身份时必填，由 Hub 部署者提供。
-# 不加 /health 或 /mcp，示例地址须替换为实际可达地址。
-# 已有身份时可以省略；填写时必须与身份文件中保存的 Hub 一致。
-hub_url: http://192.168.50.10:8787
-
-# 新节点的显示名称：1～128 字符，默认当前机器的主机名；office-node 只是示例。
-# 只在创建身份时使用，修改这里不会重命名已有身份。
-name: office-node
-
-# 长期身份文件：默认 .runbridge/node.json，相对本 YAML 目录。
-# 首次启动自动生成，重启时复用；不要手写 ID/秘密，也不要让多个 Node 共用它。
-identity_file: .runbridge/node.json
-
-# 登记文本文件：默认 null（不配置），不是默认读取下面这个路径。
-# 显式配置文件时优先读取它；未配置才读取 RUNBRIDGE_ENROLLMENT_TOKEN 环境变量。
-# 首次登记必须提供其中一种凭据；已有身份且都未提供时，直接使用身份连接。
-# 保留此配置时，每次进程启动会先做一次幂等登记；文件缺失或为空时不会回退环境变量。
-# 确认首次登记成功后可删除本项，并停止提供登记环境变量，之后无需登记令牌即可重启。
-enrollment_token_file: .runbridge/enrollment.token
-
-# 受管理浏览器设置：默认 null（不启用）。每次会话新建 Chromium，结束后回收。
-# playwright 与 chrome 只能选择一个；两者都省略时仅保持控制连接，不提供浏览器资源。
-# 本例使用独立运行时缓存；可用已有 npm Playwright 1.63.0，也可用可选准备工具。
-playwright:
-  # npm 项目根目录：默认 .runbridge/playwright，相对本 YAML 目录。
-  # 其中应包含 node_modules/playwright；不是 Python 的 .venv 或 node 可执行文件目录。
-  runtime_directory: .runbridge/playwright
-
-  # Node.js 命令：默认 node，从服务进程的 PATH 查找。
-  # 也可指定实际绝对路径；含斜线的相对路径以本 YAML 目录为基准。
-  node_executable: node
-
-  # 浏览器缓存选择：默认 false，使用 runtime_directory 下的 browsers/，覆盖同名环境变量。
-  # true 表示采用 Playwright 官方缓存规则：保留 PLAYWRIGHT_BROWSERS_PATH；
-  # 未设置该环境变量时使用当前系统用户的默认缓存。程序不会因此自动安装浏览器。
-  use_default_browser_cache: false
-
-  # 本 Node 内的资源 ID：默认 chromium；签发许可和调用方申请时使用相同 ID。
-  # 不同 Node 可以使用同名资源，靠各自的 node_id 区分。
-  resource_id: chromium
-
-  # 浏览器启动选项：默认 {}；使用 Node.js launchServer 的 camelCase 字段名。
-  # 未填写的选项通常采用 Playwright 默认值；RunBridge 将启动 timeout 默认设为 20000 毫秒，
-  # 外层等待服务就绪最多 30 秒。完整选项及默认行为见 ../部署配置与凭据.md 第 4.3 节。
-  launch_options:
-    # 无窗口模式：默认 true。false 显示窗口，Linux 还需有可用图形会话。
-    headless: true
-
-# 另一种模式：复用已授权的已有 Chrome。chrome 默认 null（不启用）。
-# 使用时删除上方整个 playwright 段，再取消下列注释并填入真实端点。
-# 此模式不调用 launchServer，不启动或关闭原 Chrome，不需要 Node.js/npm Playwright。
-# chrome:
-#   # 本 Node 内的资源 ID：默认 chrome。
-#   resource_id: chrome
-#   # 必填，无默认值；只接受 BROWSER_INSTANCE，表示授权整个浏览器实例。
-#   authorization_scope: BROWSER_INSTANCE
-#   # 必填，无默认值；从所有者已确认的本机 Chrome /json/version 取得 webSocketDebuggerUrl。
-#   # 以下浏览器 ID 仅为格式示例，不能用于实际连接；不要将真实端点交给调用方。
-#   cdp_endpoint: ws://127.0.0.1:9222/devtools/browser/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+# Node 0.6.0；UTF-8 YAML，缩进使用空格。
+# 所有相对本地路径以本文件目录为基准；不展开 ~、$HOME 或 shell 表达式。
+config_version: 2  # 配置格式版本，当前仅支持 2；省略时也是 2。
+hub_url: http://192.168.50.10:8787  # 首次必须：从 Hub 部署者取得的基址；已有身份可省略。
+name: office-node  # 可选：首次生成身份时的名称，默认机器名；不修改已有身份名称。
+identity_file: .runbridge/node.json  # 默认此路径；首次自动生成，重启复用，不手工填写秘密。
+enrollment_token_file: .runbridge/enrollment.token  # 首次登记必需的 Hub 原始单行文本路径。
+# 已登记后可删除上面 enrollment_token_file 字段；也可一直保留以幂等确认登记。
+# 无文件时可从 RUNBRIDGE_ENROLLMENT_TOKEN 读取；两者都有时文件优先。
+tools:  # 默认 {}，此时只接入控制连接，不提供浏览器资源。
+  playwright:  # 当前唯一已实现的工具适配器。
+    resource_id: chromium  # 默认 chromium；签发许可时使用完全相同的值。
+    mode: managed  # 默认 managed：每次会话新建 Chromium；另一个值为 borrowed。
+    # browser_cache_directory 默认不设置，遵循 PLAYWRIGHT_BROWSERS_PATH 或 Playwright 默认缓存。
+    # browser_cache_directory: /absolute/path/to/shared-browsers
+    launch_options:  # 默认 {}；只用于 managed，参数采用 Python Playwright 的 snake_case。
+      headless: true  # Playwright 默认 true；设 false 需要可用的图形桌面会话。
+      timeout: 20000  # 本项目启动默认 20000 毫秒；范围 1～30000，不接受无限超时。
+      # channel: chrome  # 默认省略：使用匹配的 Chromium；可由所有者选择已准备的兼容浏览器。
+      # executable_path: /absolute/path/to/chromium  # 默认省略；自选可执行文件的兼容性由所有者确认。
+      # args: []  # 默认省略：采用 Playwright 默认参数；自定义参数需自行确认对浏览器的影响。
+      # slow_mo: 0  # 默认 0 毫秒；每步增加延迟，用于观察，不代替动作超时。
+      # proxy: {server: "http://proxy.example:8080"}  # 默认无代理；只影响浏览器访问网站。
+# 已有 Chrome 改为以下结构，并删除 managed 的 launch_options/browser_cache_directory：
+# tools:
+#   playwright:
+#     resource_id: chrome  # 自定义名称，仍须与许可范围一致；省略仍为 chromium。
+#     mode: borrowed  # 复用已授权浏览器；释放会话只断开项目连接。
+#     authorization_scope: BROWSER_INSTANCE  # borrowed 必须显式填写，授权该实例的所有页面。
+#     cdp_endpoint: ws://127.0.0.1:9222/devtools/browser/实际浏览器ID  # 必须是本机固定实例 WebSocket。

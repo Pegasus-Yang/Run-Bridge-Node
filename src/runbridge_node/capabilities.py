@@ -31,9 +31,9 @@ def probe_capabilities() -> CapabilitySnapshot:
     return CapabilitySnapshot(
         host={"hostname": socket.gethostname(), "platform": platform.system(), "machine": platform.machine(), "python_version": platform.python_version(), "client_version": __version__},
         backends=[
-            BackendCapability(name="runbridge-node", installed=True, runtime_version=__version__, version_status="DETECTED", declared_protocols=["runbridge-control-v1"], coverage_status="SUPPORTED"),
+            BackendCapability(name="runbridge-node", installed=True, runtime_version=__version__, version_status="DETECTED", declared_protocols=["runbridge-control-v2"], coverage_status="SUPPORTED"),
             BackendCapability(name="http", installed=httpx_version is not None, runtime_version=httpx_version, version_status="DETECTED" if httpx_version else "NOT_INSTALLED", declared_protocols=["http-request"]),
-            BackendCapability(name="playwright", installed=playwright_version is not None, runtime_version=playwright_version, version_status="DETECTED" if playwright_version else "NOT_INSTALLED", declared_protocols=["playwright"]),
+            BackendCapability(name="playwright", installed=playwright_version is not None, runtime_version=playwright_version, version_status="DETECTED" if playwright_version else "NOT_INSTALLED"),
             BackendCapability(name="appium", installed=shutil.which("appium") is not None, declared_protocols=["webdriver-http"]),
             BackendCapability(name="adb", installed=shutil.which("adb") is not None),
         ],

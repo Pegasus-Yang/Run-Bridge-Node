@@ -8,16 +8,15 @@ import signal
 import socket
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 from pydantic import ValidationError
 
 from runbridge_node.client import ClientError, NodeClient, inspect_node, request_json
-from runbridge_node.chrome import ChromeConfig, ChromeExecutor
 from runbridge_node.config import AccessConfig, NodeConfig
 from runbridge_node.protocol import GrantRequest, SessionCreate, SessionView
 from runbridge_node.visual_protocol import SessionQueryView
 from runbridge_node.executor import PlaywrightExecutor
-from runbridge_node.runtime import PlaywrightConfig, prepare_runtime, PLAYWRIGHT_VERSION
 from runbridge_node.startup import RunSettings, prepare_identity
 
 
@@ -26,17 +25,13 @@ async def execute(*, args) -> None:
 
     :param args: 已解析命令参数。
     """
-    if args.command == "prepare-playwright":
-        await prepare_runtime(directory=args.runtime_dir, node_executable=args.node_executable)
-        print(f"Playwright {PLAYWRIGHT_VERSION} 运行时已准备：{args.runtime_dir.resolve()}")
-        return
     if args.command == "session":
         access = AccessConfig.model_validate_json(args.access_file.read_text(encoding="utf-8"))
         if args.action == "create":
-            body = SessionCreate(resource_id=args.resource_id, client_version=args.client_version, lease_seconds=args.lease_seconds)
-            result = await request_json(hub_url=access.hub_url, method="POST", path=f"/v1/nodes/{access.node_id}/sessions", token=access.access_token.get_secret_value(), body=body.model_dump(mode="json"), timeout=40)
+            body = SessionCreate(resource_id=args.resource_id, tool=args.tool, request_id=args.request_id or f"open_{uuid4().hex}", lease_seconds=args.lease_seconds)
+            result = await request_json(hub_url=access.hub_url, method="POST", path=f"/v2/nodes/{access.node_id}/sessions", token=access.access_token.get_secret_value(), body=body.model_dump(mode="json"), timeout=40)
         else:
-            result = await request_json(hub_url=access.hub_url, method="GET" if args.action == "get" else "DELETE", path=f"/v1/sessions/{args.session_id}", token=access.access_token.get_secret_value(), timeout=15)
+            result = await request_json(hub_url=access.hub_url, method="GET" if args.action == "get" else "DELETE", path=f"/v2/sessions/{args.session_id}", token=access.access_token.get_secret_value(), timeout=15)
         view_type = SessionQueryView if args.action == "get" else SessionView
         print(view_type.model_validate(result).model_dump_json(indent=2))
         return
@@ -54,7 +49,7 @@ async def execute(*, args) -> None:
         print(result.model_dump_json(indent=2))
         return
     settings = None
-    if args.command == "run" and args.settings is not None:
+    if args.command == "run":
         settings = RunSettings.load(path=args.settings)
         config, registered = await prepare_identity(settings=settings)
         if registered is not None:
@@ -62,12 +57,11 @@ async def execute(*, args) -> None:
     else:
         config = NodeConfig.load(path=args.config or Path(".runbridge/node.json"))
     executor = None
-    if args.command == "run" and (args.playwright_config is not None or settings is not None and settings.playwright is not None):
-        runtime = settings.playwright if settings is not None else PlaywrightConfig.model_validate_json(args.playwright_config.read_text(encoding="utf-8"))
-        executor = PlaywrightExecutor(identity=config, config=runtime)
-    if args.command == "run" and (args.chrome_config is not None or settings is not None and settings.chrome is not None):
-        chrome = settings.chrome if settings is not None else ChromeConfig.model_validate_json(args.chrome_config.read_text(encoding="utf-8"))
-        executor = ChromeExecutor(identity=config, config=chrome)
+    if args.command == "run" and "playwright" in settings.tools:
+        from importlib.util import find_spec
+        if find_spec("playwright") is None:
+            raise ClientError("缺少 Python Playwright；请在当前虚拟环境安装 runbridge-node[playwright]")
+        executor = PlaywrightExecutor(identity=config, config=settings.tools["playwright"], state_directory=settings.identity_file.parent / f"state-{config.node_id}")
     client = NodeClient(config=config, executor=executor)
     if args.command == "grant":
         if args.output.exists():
@@ -105,8 +99,9 @@ def main() -> None:
     register.add_argument("--hub-url", required=True)
     register.add_argument("--enrollment-token-file", type=Path)
     register.add_argument("--name", default=socket.gethostname())
-    for command in [register, commands.add_parser("run", help="连接、上报能力并发送心跳"), commands.add_parser("grant", help="创建独立对接码"), commands.add_parser("revoke", help="撤销对接码")]:
-        command.add_argument("--config", type=Path, default=None if command is commands.choices["run"] else Path(".runbridge/node.json"))
+    commands.add_parser("run", help="读取 YAML，登记、启动并执行本机 Python 工具")
+    for command in [register, commands.add_parser("grant", help="创建独立对接码"), commands.add_parser("revoke", help="撤销对接码")]:
+        command.add_argument("--config", type=Path, default=Path(".runbridge/node.json"))
     grant = commands.choices["grant"]
     grant.add_argument("--output", type=Path, required=True)
     grant.add_argument("--resource-id", action="append")
@@ -117,26 +112,19 @@ def main() -> None:
     inspect.add_argument("--access-file", type=Path)
     inspect.add_argument("--hub-url")
     inspect.add_argument("--output", choices=["json"], default="json")
-    execution = commands.choices["run"].add_mutually_exclusive_group()
-    commands.choices["run"].add_argument("--settings", type=Path, help="读取统一 YAML，首次登记并启动；不可与旧配置参数混用")
-    execution.add_argument("--playwright-config", type=Path)
-    execution.add_argument("--chrome-config", type=Path, help="授权复用已有 Chrome；不启动或关闭浏览器")
-    prepare = commands.add_parser("prepare-playwright", help="安装锁定的独立 Playwright 运行时和 Chromium")
-    prepare.add_argument("--runtime-dir", type=Path, default=Path(".runbridge/playwright"))
-    prepare.add_argument("--node-executable", default="node")
+    commands.choices["run"].add_argument("--settings", type=Path, required=True, help="读取 config_version: 2 的统一 YAML")
     sessions = commands.add_parser("session", help="使用对接许可申请、查询或释放浏览器会话")
     actions = sessions.add_subparsers(dest="action", required=True)
     create = actions.add_parser("create")
     create.add_argument("--resource-id", default="chromium")
-    create.add_argument("--client-version", required=True)
+    create.add_argument("--tool", default="playwright")
+    create.add_argument("--request-id")
     create.add_argument("--lease-seconds", type=float, default=300)
     for action in [create, actions.add_parser("get"), actions.add_parser("close")]:
         action.add_argument("--access-file", type=Path, required=True)
         if action is not create:
             action.add_argument("session_id")
     args = parser.parse_args()
-    if args.command == "run" and args.settings is not None and any(value is not None for value in (args.config, args.playwright_config, args.chrome_config)):
-        parser.error("--settings 不能与 --config、--playwright-config 或 --chrome-config 同时使用")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         asyncio.run(execute(args=args))

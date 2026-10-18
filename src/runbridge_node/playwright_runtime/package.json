@@ -1,9 +1,0 @@
-{
-  "name": "runbridge-playwright-runtime",
-  "version": "0.1.0",
-  "private": true,
-  "description": "RunBridge Node 的独立 Playwright 浏览器服务运行时",
-  "dependencies": {
-    "playwright": "1.63.0"
-  }
-}

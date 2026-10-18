@@ -4,12 +4,12 @@ import os
 import secrets
 import socket
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 import yaml
 from pydantic import Field, field_validator, model_validator
 
-from runbridge_node.chrome import ChromeConfig
 from runbridge_node.client import ClientError, NodeClient
 from runbridge_node.config import NodeConfig, validate_hub_url
 from runbridge_node.protocol import Model, RegistrationResult
@@ -19,12 +19,12 @@ from runbridge_node.runtime import PlaywrightConfig
 class RunSettings(Model):
     """一个 Node 进程的启动设置，不保存生成的身份秘密。"""
 
+    config_version: Literal[2] = 2
     hub_url: str | None = None
     name: str = Field(default_factory=socket.gethostname, min_length=1, max_length=128)
     identity_file: Path = Path(".runbridge/node.json")
     enrollment_token_file: Path | None = None
-    playwright: PlaywrightConfig | None = None
-    chrome: ChromeConfig | None = None
+    tools: dict[str, PlaywrightConfig] = Field(default_factory=dict)
 
     @field_validator("hub_url")
     @classmethod
@@ -36,13 +36,13 @@ class RunSettings(Model):
         return validate_hub_url(value=value) if value is not None else None
 
     @model_validator(mode="after")
-    def one_browser(self):
-        """每个 Node 只启用一种浏览器资源。
+    def known_tools(self):
+        """工具通过显式适配器注册，不接受远程模块名。
 
         :returns: 已检查的设置。
         """
-        if self.playwright is not None and self.chrome is not None:
-            raise ValueError("playwright 与 chrome 只能配置一种")
+        if set(self.tools) - {"playwright"}:
+            raise ValueError("TOOL_UNSUPPORTED")
         return self
 
     @classmethod
@@ -63,17 +63,19 @@ class RunSettings(Model):
             value = values.get(key, default)
             if isinstance(value, str):
                 values[key] = (base / value).resolve()
-        browser = values.get("playwright")
+        if any(key in values for key in ("playwright", "chrome")):
+            raise ValueError("旧浏览器配置需要迁移为 config_version: 2 与 tools.playwright")
+        tools = values.get("tools", {})
+        if not isinstance(tools, dict):
+            raise ValueError("tools 必须是配置对象")
+        browser = tools.get("playwright")
         if isinstance(browser, dict):
-            runtime = browser.get("runtime_directory", ".runbridge/playwright")
-            if isinstance(runtime, str):
-                browser["runtime_directory"] = (base / runtime).resolve()
-            node = browser.get("node_executable", "node")
-            if isinstance(node, str) and "/" in node:
-                browser["node_executable"] = str((base / node).resolve())
+            cache = browser.get("browser_cache_directory")
+            if isinstance(cache, str):
+                browser["browser_cache_directory"] = (base / cache).resolve()
             options = browser.get("launch_options")
             if isinstance(options, dict):
-                for key in ("artifactsDir", "downloadsPath", "executablePath", "tracesDir"):
+                for key in ("artifacts_dir", "downloads_path", "executable_path", "traces_dir"):
                     if isinstance(options.get(key), str):
                         options[key] = str((base / options[key]).resolve())
         return cls.model_validate(values)

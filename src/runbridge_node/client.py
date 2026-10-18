@@ -10,11 +10,10 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 from runbridge_node.capabilities import probe_capabilities
-from runbridge_node.chrome import ChromeExecutor
 from runbridge_node.config import NodeConfig, validate_hub_url
 from runbridge_node.visual_protocol import NodeQueryView
 from runbridge_node.executor import PlaywrightExecutor
-from runbridge_node.protocol import OutgoingAdapter, SessionOpen, SessionConnect, SessionStop, SessionPrepared, SessionClosed, Acknowledgement, CapabilityReport, CapabilitySnapshot, ControlError, GrantCreated, GrantRequest, Heartbeat, RegistrationResult, Welcome
+from runbridge_node.protocol import OutgoingAdapter, SessionOpen, SessionStop, SessionPrepared, SessionClosed, Acknowledgement, CapabilityReport, CapabilitySnapshot, ControlError, GrantCreated, GrantRequest, Heartbeat, RegistrationResult, Welcome
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,7 @@ async def request_json(*, hub_url: str, method: str, path: str, token: str, body
 class NodeClient:
     """使用持久身份接入 Hub，网络失联后重新认证。"""
 
-    def __init__(self, *, config: NodeConfig, capabilities: CapabilitySnapshot | None = None, executor: PlaywrightExecutor | ChromeExecutor | None = None):
+    def __init__(self, *, config: NodeConfig, capabilities: CapabilitySnapshot | None = None, executor: PlaywrightExecutor | None = None):
         self.config = config
         self.capabilities = capabilities
         self.executor = executor
@@ -119,7 +118,7 @@ class NodeClient:
         :param stop: 停止信号。
         """
         parsed = urlsplit(self.config.hub_url)
-        url = urlunsplit(("wss" if parsed.scheme == "https" else "ws", parsed.netloc, f"{parsed.path}/v1/nodes/{self.config.node_id}/control", "", ""))
+        url = urlunsplit(("wss" if parsed.scheme == "https" else "ws", parsed.netloc, f"{parsed.path}/v2/nodes/{self.config.node_id}/control", "", ""))
         send_lock = asyncio.Lock()
         async with connect(uri=url, additional_headers={"Authorization": f"Bearer {self.config.node_token.get_secret_value()}"}, max_size=CONTROL_MAX_BYTES, max_queue=16, open_timeout=10, close_timeout=2) as websocket:
             async def send(*, message):
@@ -191,8 +190,6 @@ class NodeClient:
                     else:
                         await send(message=SessionPrepared(connection_generation=generation, session_id=message.session_id, error_code="BACKEND_UNAVAILABLE"))
                         await send(message=SessionClosed(connection_generation=generation, session_id=message.session_id, cleanup="COMPLETE"))
-                elif isinstance(message, SessionConnect) and self.executor is not None:
-                    self.executor.activate(message=message)
                 elif isinstance(message, SessionStop) and self.executor is not None:
                     self.executor.stop(message=message)
             except (ValueError, ValidationError, AttributeError):

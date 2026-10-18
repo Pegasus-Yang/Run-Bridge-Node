@@ -26,11 +26,12 @@ logger = logging.getLogger(__name__)
 class VisualPublisher:
     """只观察固定实例；失败不会向执行通道抛出异常。"""
 
-    def __init__(self, *, identity: NodeConfig, endpoint: str, message: SessionOpen, support_cache: dict[int, bool]):
+    def __init__(self, *, identity: NodeConfig, endpoint: str, message: SessionOpen, support_cache: dict[int, bool], target_map: dict | None = None):
         self.identity = identity
         self.endpoint = endpoint
         self.message = message
         self.support_cache = support_cache
+        self.target_map = target_map
         self.targets: list[VisualTarget] = []
         self.state = VisualSourceState(state="WAITING", reason_code="WAITING_FOR_BROWSER")
         self.changed = asyncio.Event()
@@ -78,7 +79,10 @@ class VisualPublisher:
         self.source_key = None
         self.capture = CaptureProcess()
         parsed = urlsplit(self.endpoint)
-        endpoint = urlunsplit((parsed.scheme, parsed.netloc, f"/devtools/page/{target_id}", "", ""))
+        actual = next((key for key, value in self.target_map.items() if value == target_id), None) if self.target_map is not None else target_id
+        if actual is None:
+            raise ValueError("画面目标引用已经失效")
+        endpoint = urlunsplit((parsed.scheme, parsed.netloc, f"/devtools/page/{actual}", "", ""))
         try:
             await self.capture.start(endpoint=endpoint)
         except (OSError, ValueError, TimeoutError):
@@ -104,7 +108,8 @@ class VisualPublisher:
                     raise ValueError("浏览器观察请求失败")
                 pages = sorted((item for item in response["result"]["targetInfos"] if item.get("type") == "page"),
                                key=lambda item: item["targetId"])
-                values = [VisualTarget(target_id=item["targetId"], label=f"页面 {index + 1}") for index, item in enumerate(pages)]
+                public = [(self.target_map.get(item["targetId"]) if self.target_map is not None else item["targetId"]) for item in pages]
+                values = [VisualTarget(target_id=key, label=f"页面 {index + 1}") for index, key in enumerate(public) if key is not None]
                 if len(values) > 256:
                     raise ValueError("浏览器页面超过合同上限")
                 if values != self.targets:
@@ -219,13 +224,13 @@ class VisualPublisher:
                     "x-runbridge-generation": str(self.message.connection_generation)}, max_size=VISUAL_MAX_BYTES,
                     max_queue=1, close_timeout=1, open_timeout=5) as websocket:
                     self.latest = None
-                    await websocket.send(message=VisualHello(browscreen_version=package_version(name="browscreen")).model_dump_json())
+                    await websocket.send(message=self.hello().model_dump_json())
                     tasks = [asyncio.create_task(coro=self.send(websocket=websocket)), asyncio.create_task(coro=self.receive(websocket=websocket))]
                     done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
                         task.result()
             except InvalidStatus as error:
-                if error.response.status_code in {401, 403, 404, 410}:
+                if error.response.status_code in {401, 403, 404}:
                     return
             except (WebSocketException, OSError, TimeoutError, ValueError):
                 pass
@@ -262,6 +267,10 @@ class VisualPublisher:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             await self.stop_capture()
+
+    def hello(self) -> VisualHello:
+        """报告真实采集后端，不将不同实现伪装成同一库。"""
+        return VisualHello(browscreen_version=package_version(name="browscreen"))
 
     async def close(self) -> str:
         """停止观察与发送，并返回真实的自有资源清理状态。"""

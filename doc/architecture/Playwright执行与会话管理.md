@@ -1,94 +1,17 @@
-# RunBridge Playwright 执行与会话管理
+# Python worker 执行与清理
 
-[文档导航](../README.md) · [会话接口](../development/protocol/会话接口与原生连接.md) · [阶段验收](../project/Playwright阶段验收记录.md)
+当前 Node 0.6.0：每个会话使用当前 Node `.venv` 的 Python 启动一个 `runbridge_node.worker` 进程。主进程管理控制心跳、资源占用、出站执行连接和清理；worker 持有 Playwright 及对象表，显式分派白名单动作。通用 worker 只处理工具错误、信封、队列和结果，不导入 Playwright。
 
-当前实现对应 Hub 0.5.1 / Node 0.5.0；本文说明受管理 Chromium 路线，已有 Chrome 的路线见[Chrome 复用与授权清理](Chrome复用与授权清理.md)。在 R0/R1 之上完成 R2 的资源/会话部分和 R3 的受管理 Chromium 原生接入。R2 的独立业务 HTTP 执行、Appium/ADB 和容量压测未实施。本文件描述当前代码，定稿路线保留在 `doc/design/`。
+managed 使用 Python chromium.launch，新建 context/page；borrowed 使用 Python connect_over_cdp(no_defaults=True)，枚举已有页面。无需 npm BrowserServer、launchServer 或导出的原生 wsEndpoint。内部 Python driver 的存在是 Playwright 包自己的实现，项目不要求单独的系统 Node.js。
 
-## 执行路径与模块
+Node 与 worker 以 4 字节大端长度 + UTF-8 JSON 管道通信，单消息最大 16 MiB。Hub 到 Node 的执行 WS 也是项目 JSON，不是 SDK 对象协议。session_ready 的页面目录放在执行通道，确认后才通过小控制消息完成准备。
 
-```mermaid
-flowchart LR
-    Caller[调用方：官方 Playwright SDK] <-->|访问许可：原生 WebSocket| Hub[RunBridge Hub 原生网关]
-    Node[RunBridge Node] <-->|每会话独立出站隧道| Hub
-    Node <-->|本机回环原生 WebSocket| Server[Node.js Playwright launchServer]
-    Server --> Browser[本机受管理 Chromium]
-    Node <-->|控制连接：准备/接入/停止/心跳| Control[Hub 控制网关]
-    Manager[Hub 会话管理] <--> Control
-    Manager <--> DB[(SQLite v3)]
-```
+对象有当前会话的不可猜用途编号，目标类型/会话归属/关闭状态均在执行前验证；Locator 是有类型的步骤列表。工具适配器显式实现 33 项方法，不按远程属性路径反射，不执行传入 Python 或 evaluate 脚本。DOM 采集只运行项目固定脚本。
 
-| 项目/模块 | 职责 |
-| --- | --- |
-| Hub `sessions.py` | 许可范围、SDK 版本、独占申请、租期、清理确认和重启中断 |
-| Hub `native.py` | 调用方入口、节点出站隧道、文本/二进制逐消息转发 |
-| Hub `service.py` / `gateway.py` | 稳定身份、连接代次、短临界区、控制发送串行与能力快照 |
-| Hub `store.py` | v1 自动迁移到 v2，保存节点/许可/会话元数据 |
-| Node `runtime.py` | 本地启动配置、独立 npm 锁文件、浏览器缓存和自建进程清理 |
-| Node `executor.py` | 实际启动探测、单 Chromium 资源位、隧道、SDK 头转交和停止 |
-| Node `playwright_runtime/server.mjs` | 公开 `chromium.launchServer()` / `BrowserServer.close()`，stdin EOF 回收 |
-| Node `client.py` / `cli.py` | 异步控制连接、CLI 会话管理；启动浏览器期间心跳继续 |
-| Node `startup.py` | 统一 YAML、以文件目录解析相对路径、复用持久身份并在需要时先登记再连接 |
+写调用进入 SDK 后超时仍可能已经发生副作用，返回 OUTCOME_UNKNOWN。SDK 自身支持的 timeout 用剩余预算，外部等待 shield 分离，不直接取消正在调用 Playwright 的协程。关闭会话先关闭受管理浏览器或借用连接，再结束动作消费者；主进程检查实际回收结果。
 
-两端分别保留 `protocol.py`，通过 JSON 合同通信。Hub 不导入 Node 包；官方执行载荷不经过 Pydantic 模型，也不逐 API 翻译。
+每个 worker 获得 `/tmp/rb-*` 短私有目录，规避长部署路径触发 Chromium UNIX socket 限制。活动记录和目录内 ownership marker 相互核对，记录 worker PID/创建时间/模式。managed 浏览器还需 Profile 位于专用 TMPDIR、进程创建时间匹配。清理只触及这些明确拥有的子进程和目录，先正常关闭，必要时终止/杀死已核验的本次进程。损坏记录或归属不明返回 UNKNOWN，资源隔离。
 
-Python SDK 与 npm Playwright 锁定 1.63.0；官方原生连接要求主、次版本匹配。Hub 在资源申请时检查调用方声明版本，并在原生握手中检查实际 SDK `User-Agent`。版本声明用于兼容性检查，节点身份和访问许可仍由各自 Bearer 凭据验证。[官方远程连接](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)
+Node 意外重启后先恢复活动记录，核验清理再探测浏览器。worker SIGKILL 和 driver 异常均需实际检查本次浏览器退出；不会把 Python 已退出当作 COMPLETE。borrowed 原 Chrome 由所有者管理，永不当作本次自建进程回收。
 
-## 资源与授权
-
-Node 的统一 YAML 未选择 `playwright`／`chrome`，且旧方式也未提供浏览器 JSON 时只保持控制连接，不开放浏览器资源。启用时每个 Node 提供一个资源位，默认 ID 为 `chromium`、类型为 `MANAGED_CHROMIUM`。本地实际启动并关闭一次浏览器后才报告 READY；安装目录存在不等于就绪。每次申请再启动一个新的受管理实例，Context/Page 的数量与操作由官方 SDK 决定。
-
-`run --settings` 可在首次启动生成身份、登记并建立连接。身份仍单独以私有 JSON 持久化，用于网络失败后的幂等重试和后续重启；登记文件不是每次控制重连的凭据。旧 `register` 与浏览器 JSON 启动方式继续兼容，详见[配置参考](../reference/部署配置与凭据.md)。
-
-npm Playwright 运行时可由用户自行准备，或使用可选 `prepare-playwright` 工具。默认使用运行时的私有 `browsers/`；`use_default_browser_cache=true` 时遵循官方缓存规则及用户环境。运行阶段不安装依赖、下载浏览器或配置系统工具。
-
-同一设备可运行多个不同身份的 Node；它们各自占用和释放资源、使用独立浏览器临时目录。已准备且不再改动的 npm 运行时和浏览器缓存可以共享，但不能跨身份重复发布同一实际 Chrome 实例。操作步骤见[多 Node 部署](../deployment/同机运行多个Node.md)。
-
-启动参数由节点所有者本地配置，以 Node.js `launchServer` 的字段名表示。调用许可不能上传 `executablePath`、环境变量或其他启动配置。`host`、`port`、信号管理由 Node 固定；不支持的配置键会明确校验失败。已支持字段和外层准备上限见[配置参考](../development/protocol/会话接口与原生连接.md)。
-
-Hub 在同一短临界区复核许可、节点代次、资源准备与占用，并先占用再发送启动命令。Node 再次检查本机资源。查询中的占用取节点报告与 Hub 当前预约的约束结果，不能依据迟到的 FREE 报告抢占正在准备的实例。
-
-会话归属于创建它的许可；同一节点的另一个许可不能查询、连接或释放它。一个会话只允许一条调用方原生连接，连接后不透明重连 SDK 对象。
-
-## 生命周期与清理
-
-| 状态 | 含义 |
-| --- | --- |
-| PREPARING | 已预约资源，Node 正在启动浏览器与出站隧道 |
-| READY | 本机浏览器与隧道已确认，等待官方 SDK |
-| ACTIVE | 已接受调用方原生连接 |
-| CLOSING | 已停止接入并请求清理，占用仍保留 |
-| CLOSED | 会话正常结束；必须同时读取 cleanup |
-| FAILED | 准备失败 |
-| INTERRUPTED | 控制失联、服务器重启或执行通道故障 |
-
-在受管理模式下，`cleanup=COMPLETE` 表示 Node 已确认回收自建进程和本次专用临时目录；`PENDING` 表示正在等待；`UNKNOWN` 表示未获确认。显式释放等待最多 10 秒，并返回真实状态。清理未知时不会把当前代次资源提前释放。
-
-Node 将清理未知写入运行时目录 `cleanup-unknown-<node_id>.json`，记录本次 helper/browser PID，不含凭据；重启后仍报告 UNAVAILABLE/UNKNOWN。只有节点所有者核对自建进程已经退出后才能移除标记并重启 Node。新代次的真实 READY/FREE 报告可解除旧代次预约，但不会改写旧会话的历史 cleanup。
-
-会话租期默认 300 秒，可取 1–3600 秒；有效期限不晚于访问许可到期。新执行入口即时校验许可/期限，转发每条消息时检查会话状态与期限，0.25 秒周期检查也会关闭未接入的 READY 会话。撤销许可先写 SQLite，再关闭相关连接并请求清理；撤销接口返回不等于清理已经确认。
-
-Node 为每次浏览器创建运行时目录下的专用 sessions/browser-* 临时目录，并给 helper 指定 TMPDIR。正常退出使用官方 close；异常时只回收本次创建的 helper 和已核验的浏览器独立进程组，确认退出后清理该专用目录，不删除用户配置的外部输出目录。Node 失联时取消执行并回收自己的浏览器。Hub 重启把未终止的持久会话标为 INTERRUPTED/UNKNOWN，删除原生入口，新节点连接重新探测，不复活旧 Browser/Context/Page，也不重放任何协议调用。保留的历史终止记录不被复活。
-
-`execution_outcome` 只取 `NOT_STARTED`、`NOT_TRACKED`、`OUTCOME_UNKNOWN`。网关不追踪每个操作的业务结果；即使某次操作断线前已生效，也不会代替调用方判断或重放。
-
-## 转发与存储
-
-控制消息应用上限为 64 KiB，原生单消息上限为 16 MiB。原生文本与二进制按顺序转发，未知原生字段保留，发送直接等待下游；Node 两个原生连接的库缓冲上限各为 4，不另设无界应用队列。文件大小和单协议消息大小不同；大文件是否被 SDK 分块由原生工具决定，超限会关闭连接，不静默截断。
-
-Hub 固定单 ASGI Worker、asyncio，当前 CLI 使用 Uvicorn `websockets` 后端，`ws_max_size=16 MiB`、`ws_max_queue=4`。R1 时的 SansIO 后端在本次锁定版本中对 HTTP 拒绝握手记录误报，因此当前改用已完成真实验收且能明确配置队列上限的后端；该实现有上游弃用提示，升级 Uvicorn/websockets 前要复核拒绝握手、消息上限和背压。[Uvicorn 配置](https://uvicorn.dev/settings/)
-
-SQLite v3 沿用 `sessions` 保存公开状态、归属、代次与时间，并增加无凭据 `mcp_requests`，原子关联 MCP 请求和首次会话分配；准备或连接失败后仍能恢复身份。不保存启动秘密、本机端点或执行帧。高频心跳和原生载荷不逐条落库。已结束的当前路由会从内存移除，历史元数据仍保存于 SQLite；清理未知的当前预约继续保留。
-
-## 验证范围
-
-已验证本机 macOS arm64、独立 Hub/Node 进程、官方 Python SDK 的 Browser/Context/Page/Locator、弹窗/新页面、路由回调、PNG、文件上传/下载、Trace、原生 TimeoutError、授权拒绝、资源冲突、撤销、租期和正常/异常重启。
-
-原生方法调用错误保持 SDK 原始内容；浏览器启动失败作为管理准备错误返回公开错误码，helper 不把可能含本地启动秘密的原始日志交付调用方。启动失败排查见[运行与排障](../deployment/运行与排障.md)。
-
-R4 Chrome CDP 的实际验收另见[Chrome 记录](../project/R4Chrome复用验收记录.md)。完整原生 SDK 矩阵仍以 macOS 为基线。Ubuntu ARM64 另已验证受管理 MCP 代表性交互和同页画面，见[DSH 联调](../project/DSH与受管理画面联调.md)；已有 Chrome 模式见[Ubuntu ARM64 与字体测试](../project/虚拟机Node跨机器验收记录.md)。扩展、Firefox/WebKit、独立 HTTP 执行、Appium、远程 TLS/NAT、Windows、完整 Linux 原生矩阵、超大输出/慢接收者压力和 100 在线/10 并发尚未验收。该矩阵证明代表性原生能力可用，不等于对 Playwright 所有方法逐项认证。
-
-## 受管理 MCP 与临时目录更新
-
-0.5.0 的 Node 用专用探测页面确认 `managed_visual=cdp-png`；Hub MCP 持有的同一页面可提供持续画面，详见[画面架构](浏览器画面采集与分发.md)。普通 SDK 对象归属保持原有语义。浏览器临时文件位于私有短路径 `/tmp/rb-*`（POSIX），避免长 runtime_directory 使 Chromium UNIX SingletonSocket 超长。仅实际进程退出确认后删除，UNKNOWN 保留目录及隔离。
-
-新增实际范围为 Ubuntu ARM64、Playwright 1.63.0、Chromium 153.0.8010.12 的受管理 MCP 操作和持续画面；历史 macOS 矩阵保留原验证范围，不扩展为全部 SDK 方法认证。详见[DSH 与受管理画面联调](../project/DSH与受管理画面联调.md)。
+扩展工具应在 tools 的显式创建器、版本化方法输入/输出合同和启动资源探测处登记本地实现。队列、请求去重及结果信封保持共用；当前没有实现额外工具或远程插件市场。
