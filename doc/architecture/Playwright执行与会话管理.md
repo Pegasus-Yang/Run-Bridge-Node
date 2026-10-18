@@ -27,6 +27,7 @@ flowchart LR
 | Node `executor.py` | 实际启动探测、单 Chromium 资源位、隧道、SDK 头转交和停止 |
 | Node `playwright_runtime/server.mjs` | 公开 `chromium.launchServer()` / `BrowserServer.close()`，stdin EOF 回收 |
 | Node `client.py` / `cli.py` | 异步控制连接、CLI 会话管理；启动浏览器期间心跳继续 |
+| Node `startup.py` | 统一 YAML、以文件目录解析相对路径、复用持久身份并在需要时先登记再连接 |
 
 两端分别保留 `protocol.py`，通过 JSON 合同通信。Hub 不导入 Node 包；官方执行载荷不经过 Pydantic 模型，也不逐 API 翻译。
 
@@ -34,7 +35,13 @@ Python SDK 与 npm Playwright 锁定 1.63.0；官方原生连接要求主、次�
 
 ## 资源与授权
 
-Node 不带 `--playwright-config` 或 `--chrome-config` 时保持 R1 控制模式，不开放浏览器资源。启用时每个 Node 提供一个资源位，默认 ID 为 `chromium`、类型为 `MANAGED_CHROMIUM`。本地实际启动并关闭一次浏览器后才报告 READY；安装目录存在不等于就绪。每次申请再启动一个新的受管理实例，Context/Page 的数量与操作由官方 SDK 决定。
+Node 的统一 YAML 未选择 `playwright`／`chrome`，且旧方式也未提供浏览器 JSON 时只保持控制连接，不开放浏览器资源。启用时每个 Node 提供一个资源位，默认 ID 为 `chromium`、类型为 `MANAGED_CHROMIUM`。本地实际启动并关闭一次浏览器后才报告 READY；安装目录存在不等于就绪。每次申请再启动一个新的受管理实例，Context/Page 的数量与操作由官方 SDK 决定。
+
+`run --settings` 可在首次启动生成身份、登记并建立连接。身份仍单独以私有 JSON 持久化，用于网络失败后的幂等重试和后续重启；登记文件不是每次控制重连的凭据。旧 `register` 与浏览器 JSON 启动方式继续兼容，详见[配置参考](../reference/部署配置与凭据.md)。
+
+npm Playwright 运行时可由用户自行准备，或使用可选 `prepare-playwright` 工具。默认使用运行时的私有 `browsers/`；`use_default_browser_cache=true` 时遵循官方缓存规则及用户环境。运行阶段不安装依赖、下载浏览器或配置系统工具。
+
+同一设备可运行多个不同身份的 Node；它们各自占用和释放资源、使用独立浏览器临时目录。已准备且不再改动的 npm 运行时和浏览器缓存可以共享，但不能跨身份重复发布同一实际 Chrome 实例。操作步骤见[多 Node 部署](../deployment/同机运行多个Node.md)。
 
 启动参数由节点所有者本地配置，以 Node.js `launchServer` 的字段名表示。调用许可不能上传 `executablePath`、环境变量或其他启动配置。`host`、`port`、信号管理由 Node 固定；不支持的配置键会明确校验失败。已支持字段和外层准备上限见[配置参考](../development/protocol/会话接口与原生连接.md)。
 

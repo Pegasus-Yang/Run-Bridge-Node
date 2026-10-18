@@ -6,7 +6,7 @@
 
 ## 1. 确认前提已经完成
 
-首次安装先按部署指南完成登记，再选择**受管理 Chromium**。只有已有 Chrome 的实例授权还不够，当前 MCP 浏览器工具不会自动复用那一实例。
+首次安装先按部署指南准备统一配置，再选择**受管理 Chromium**。只有已有 Chrome 的实例授权还不够，当前 MCP 浏览器工具不会自动复用那一实例。
 
 向 Hub 部署者取得实际 MCP 地址，例如 `http://192.168.50.10:8787/mcp`；这是 Hub 基址后加 `/mcp` 的工具入口，必须确认对方已安装并启用相应功能。正常的健康响应不能证明 MCP 已开启。
 
@@ -16,7 +16,7 @@ Node 服务保持运行，且应查询到：
 | --- | --- |
 | 节点 | ONLINE，能力报告未过期 |
 | 浏览器资源 | 默认 `resource_id=chromium`，`kind=MANAGED_CHROMIUM`，READY／FREE |
-| 运行时 | 本包准备的 npm Playwright 1.63.0，与 Hub 的 SDK 主次版本匹配 |
+| 运行时 | 已有、自行维护或本包工具准备的 npm Playwright 1.63.0，与 Hub 的 SDK 主次版本匹配 |
 | 业务地址 | Node 设备的浏览器能访问目标系统；仅 Agent 机器能访问还不够 |
 
 查询方法见[状态检查](快速开始.md)。是否显示浏览器窗口由 Node 所有者的 `launch_options.headless` 决定。

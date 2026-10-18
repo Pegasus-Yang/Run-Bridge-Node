@@ -14,6 +14,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import yaml
 from playwright.async_api import Error, TimeoutError as PlaywrightTimeoutError, async_playwright
 from pydantic import ValidationError
 from websockets.asyncio.client import connect
@@ -101,6 +102,61 @@ def test_unknown_launch_options_are_not_silently_ignored(tmp_path):
         PlaywrightConfig(runtime_directory=tmp_path, launch_options={"headless_typo": True})
     with pytest.raises(ValidationError):
         PlaywrightConfig(runtime_directory=tmp_path, launch_options={"host": "0.0.0.0"})
+
+
+def test_two_yaml_managed_nodes_share_existing_runtime_with_isolated_sessions(runtime):
+    if not (RUNTIME / "node_modules/playwright/package.json").is_file():
+        pytest.skip("需要已有兼容 npm Playwright 运行时")
+    runtime.environment["PLAYWRIGHT_BROWSERS_PATH"] = str(RUNTIME / "browsers")
+    accesses = []
+    sessions = []
+    for label in ("a", "b"):
+        directory = runtime.directory / f"browser-{label}"
+        directory.mkdir()
+        settings = directory / "node.yaml"
+        settings.write_text(yaml.safe_dump({"hub_url": runtime.url, "name": f"browser-{label}", "enrollment_token_file": str(runtime.enrollment_file), "playwright": {"runtime_directory": str(RUNTIME), "node_executable": NODE_BINARY, "use_default_browser_cache": True, "launch_options": {"headless": True}}}))
+        log_name = f"yaml-browser-{label}.log"
+        process = runtime._spawn(project=NODE_PROJECT, name="runbridge-node", arguments=["run", "--settings", str(settings)], log_name=log_name)
+        runtime.nodes.append(process)
+        deadline = time.monotonic() + 15
+        while "节点在线" not in (runtime.directory / log_name).read_text():
+            assert process.poll() is None and time.monotonic() < deadline
+            time.sleep(0.03)
+        access = runtime.grant(config=directory / ".runbridge/node.json", filename=f"browser-{label}/access.json")
+        view = runtime.wait_view(access=access)
+        assert view["capabilities"]["resources"][0]["readiness"] == "READY"
+        accesses.append(access)
+    assert accesses[0]["node_id"] != accesses[1]["node_id"]
+    for access in accesses:
+        result = create(runtime=runtime, access=access)
+        assert result.status_code == 201
+        sessions.append(result.json())
+    assert all(runtime.query(access=access).json()["capabilities"]["resources"][0]["occupancy"] == "BUSY" for access in accesses)
+
+    async def scenario():
+        async with async_playwright() as playwright:
+            browsers = []
+            try:
+                pages = []
+                for index, (access, session) in enumerate(zip(accesses, sessions, strict=True)):
+                    browser = await attach(playwright=playwright, runtime=runtime, access=access, session=session)
+                    browsers.append(browser)
+                    context = await browser.new_context()
+                    page = await context.new_page()
+                    await page.set_content(html=f"<title>instance-{index}</title><input aria-label='实例'>")
+                    await page.get_by_label(text="实例").fill(value=str(index))
+                    pages.append(page)
+                assert [await page.title() for page in pages] == ["instance-0", "instance-1"]
+                assert [await page.get_by_label(text="实例").input_value() for page in pages] == ["0", "1"]
+            finally:
+                for browser in browsers:
+                    await browser.close()
+
+    asyncio.run(scenario())
+    for access, session in zip(accesses, sessions, strict=True):
+        assert wait_session(runtime=runtime, access=access, session_id=session["session_id"])["cleanup"] == "COMPLETE"
+        assert runtime.query(access=access).json()["capabilities"]["resources"][0]["occupancy"] == "FREE"
+    evidence(test_name="yaml_multiple_managed_sessions", details={"online_nodes": 2, "simultaneous_sessions": 2, "shared_existing_npm_runtime": True, "external_browser_cache": True, "page_state_isolated": True, "cleanup": "COMPLETE"})
 
 
 def test_browser_server_exits_and_owned_browser_is_gone():

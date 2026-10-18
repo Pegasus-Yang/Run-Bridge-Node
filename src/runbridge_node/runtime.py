@@ -21,8 +21,9 @@ LAUNCH_KEYS = {"args", "artifactsDir", "channel", "chromiumSandbox", "downloadsP
 class PlaywrightConfig(Model):
     """节点所有者启用的受管理 Chromium 资源位。"""
 
-    runtime_directory: Path
+    runtime_directory: Path = Path(".runbridge/playwright")
     node_executable: str = "node"
+    use_default_browser_cache: bool = False
     resource_id: Identifier = "chromium"
     launch_options: dict[str, JsonValue] = Field(default_factory=dict, repr=False)
 
@@ -38,13 +39,14 @@ class PlaywrightConfig(Model):
         return self
 
 
-def runtime_environment(*, directory: Path) -> dict[str, str]:
-    """只给执行运行时指定专用浏览器缓存。
+def runtime_environment(*, directory: Path, use_default_browser_cache: bool = False) -> dict[str, str]:
+    """按配置选择专用缓存或官方默认浏览器缓存。
 
     :returns: 子进程环境。
     """
     values = dict(os.environ)
-    values["PLAYWRIGHT_BROWSERS_PATH"] = str(directory / "browsers")
+    if not use_default_browser_cache:
+        values["PLAYWRIGHT_BROWSERS_PATH"] = str(directory / "browsers")
     values.pop("DEBUG", None)
     values.pop("PWDEBUG", None)
     return values
@@ -95,7 +97,7 @@ class BrowserServer:
         # Chromium 的 SingletonSocket 受 UNIX 路径长度限制，运行目录不能作为 TMPDIR。
         temporary_root = Path("/tmp") if os.name == "posix" else Path(tempfile.gettempdir())
         self.temporary_directory = Path(tempfile.mkdtemp(prefix="rb-", dir=temporary_root))
-        environment = runtime_environment(directory=self.config.runtime_directory)
+        environment = runtime_environment(directory=self.config.runtime_directory, use_default_browser_cache=self.config.use_default_browser_cache)
         environment["TMPDIR"] = str(self.temporary_directory)
         self.process = await asyncio.create_subprocess_exec(self.config.node_executable, str(RUNTIME_SOURCE / "server.mjs"), str(self.config.runtime_directory), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, env=environment, start_new_session=os.name == "posix")
         self.process.stdin.write((json.dumps(self.config.launch_options) + "\n").encode())

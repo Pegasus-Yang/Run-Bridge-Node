@@ -6,8 +6,8 @@
 
 ## 部署与日常使用
 
-1. **首次操作从[部署与运行](deployment/部署与运行.md)第 1～5 节开始**：接收 Hub 地址和真实登记文件、安装 Node、自动生成并登记身份。
-2. 按部署第 6 节选择[Chrome 复用](user-guide/Chrome复用快速开始.md)或[受管理 Chromium](user-guide/Playwright快速开始.md)，在所选指南完成配置和一次启动。
+1. **首次操作从[部署与运行](deployment/部署与运行.md)第 1～5 节开始**：接收 Hub 地址和真实登记文件、安装 Node 并保存统一 YAML。
+2. 按部署第 6 节选择[Chrome 复用](user-guide/Chrome复用快速开始.md)或[受管理 Chromium](user-guide/Playwright快速开始.md)，在所选指南补充浏览器设置，一次启动完成登记与上线。
 3. 按指南返回部署第 7 节，在新终端核对状态、生成访问 JSON 并交给调用方；保持原 Node 服务运行，不重复启动。
 
 部署完成后再按需阅读：
@@ -15,9 +15,10 @@
 - [状态检查与许可管理](user-guide/快速开始.md)：日常查询、单独签发、交付、撤销和续期。
 - [MCP 对接准备](user-guide/MCP对接准备.md)：向 Agent 使用者交付受管理资源和 MCP 信息。
 - [画面采集](user-guide/浏览器画面采集.md)：已有 Chrome 的可选扩展与实际画面检查。
+- [同机运行多个 Node](deployment/同机运行多个Node.md)：独立身份、多份 YAML、运行时共享边界。
 - [运行与排障](deployment/运行与排障.md)、[配置文件示例](reference/examples/README.md)。
 
-[Node 配置与凭据](reference/部署配置与凭据.md)供查字段、默认值与参数，不是首次操作的必读前置步骤。正文已包含配置生成命令和文件内容说明。
+[Node 配置与凭据](reference/部署配置与凭据.md)供查字段、默认值与参数，不是首次操作的必读前置步骤。正文已包含配置写法和自动生成文件的说明。
 
 Hub 的 HTTP／MCP、SDK 调用和画面订阅接口由 Hub 项目的用户指南及接口参考维护。Node 所有者向调用方交付访问文件和资源信息即可。
 

@@ -4,7 +4,7 @@
 
 适用于 Node 0.5.0。此模式连接所有者明确授权的本机 Chrome，使用其中已打开的页面、上下文和登录状态。授权范围为整个浏览器实例，不是单个标签页。
 
-**开始前**：已完成部署指南第 1～5 节，本设备有 `~/runbridge-node/.venv/` 和登记成功的 `.runbridge/node.json`。本模式不需要 Node.js／npm；Chrome 本身必须已安装。
+**开始前**：已完成部署指南第 1～5 节，本设备有 `~/runbridge-node/.venv/`，并保存了登记文件和 `node.yaml`。本模式不需要 Node.js／npm；Chrome 本身必须已安装。
 
 ## 1. 准备允许调试的 Chrome 实例
 
@@ -52,9 +52,9 @@ Chrome 136 起默认用户目录的调试开关有额外限制，参见 [Chrome 
 
 浏览器可能占用此终端；保留它和浏览器窗口，再开**另一个 Node 终端**执行以下步骤，并先运行 `cd ~/runbridge-node`。无图形环境选择 `--headless=new` 属于另一种运行方式，无法依靠屏幕手工登录；首次需要人工登录时使用可用的图形会话。
 
-## 2. 从本机实例取得端点，生成 chrome.json
+## 2. 从本机实例取得端点，写入 node.yaml
 
-下面整段命令会向**你刚确认的本机端口**查询 `/json/version`，读取其中的 `webSocketDebuggerUrl` 并保存配置。浏览器 ID 来自 Chrome，不是自己编造的 UUID。
+下面整段命令会向**你刚确认的本机端口**查询 `/json/version`，读取其中的 `webSocketDebuggerUrl`，并写进第 5 节已保存的 `node.yaml`。浏览器 ID 来自 Chrome，不是自己编造的 UUID。
 
 端口不是 9222 时，修改下面 URL 的端口。只查询所有者已经确认的实例，不扫描其他端口。
 
@@ -62,33 +62,36 @@ Chrome 136 起默认用户目录的调试开关有额外限制，参见 [Chrome 
 cd ~/runbridge-node
 .venv/bin/python - <<'PYCODE'
 import json
-import os
+from pathlib import Path
 from urllib.request import ProxyHandler, build_opener
+
+import yaml
 
 opener = build_opener(ProxyHandler(proxies={}))
 with opener.open(fullurl="http://127.0.0.1:9222/json/version", timeout=5) as response:
     browser = json.load(response)
-values = {
+path = Path("node.yaml")
+settings = yaml.safe_load(path.read_text(encoding="utf-8"))
+if not isinstance(settings, dict) or "chrome" in settings or "playwright" in settings:
+    raise ValueError("请检查 node.yaml，并确保尚未选择浏览器模式")
+settings["chrome"] = {
     "resource_id": "chrome",
     "authorization_scope": "BROWSER_INSTANCE",
     "cdp_endpoint": browser["webSocketDebuggerUrl"],
 }
-descriptor = os.open(".runbridge/chrome.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-    json.dump(values, output, ensure_ascii=False, indent=2)
-    output.write("\n")
-print("已保存 .runbridge/chrome.json，未输出本机调试地址")
+path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")
+path.chmod(0o600)
+print("已将授权实例写入 node.yaml，未输出本机调试地址")
 PYCODE
 ```
 
-成功后文件格式类似这样，端点为演示值：
+成功后 YAML 会保留原 Hub、登记和身份路径，并增加下面这一段，端点示例不能直接使用：
 
-```json
-{
-  "resource_id": "chrome",
-  "authorization_scope": "BROWSER_INSTANCE",
-  "cdp_endpoint": "ws://127.0.0.1:9222/devtools/browser/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-}
+```yaml
+chrome:
+  resource_id: chrome
+  authorization_scope: BROWSER_INSTANCE
+  cdp_endpoint: ws://127.0.0.1:9222/devtools/browser/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 ```
 
 | 字段 | 来源和含义 |
@@ -97,7 +100,7 @@ PYCODE
 | `authorization_scope` | 固定为 `BROWSER_INSTANCE`，明确授权整个实例 |
 | `cdp_endpoint` | 上述接口返回的真实浏览器级 WebSocket 端点，保存在设备上，不交给 Hub 用户或调用方 |
 
-文件已存在会拒绝覆盖。Chrome 重启后浏览器 ID 通常改变；由所有者重新确认端点，编辑原配置或备份旧配置后重新生成，再重启 Node。不能继续使用本页示例 ID。
+脚本拒绝覆盖已有浏览器段。Chrome 重启后浏览器 ID 通常改变；由所有者重新确认端点，编辑 YAML 的 `chrome.cdp_endpoint`，再重启 Node。不能继续使用本页示例 ID。
 
 如果查询连接拒绝，先检查浏览器是否仍运行、启动时是否开启了调试端口、查询端口是否一致。`cdp_endpoint` 只接受固定的 `ws://127.0.0.1:端口/devtools/browser/ID` 或 IPv6 回环形式，不接受 `localhost`、远程 IP、HTTP 查询地址或页面级端点。完整规则见配置参考。
 
@@ -106,8 +109,10 @@ PYCODE
 在当前 Node 终端：
 
 ```bash
-.venv/bin/runbridge-node run --config .runbridge/node.json --chrome-config .runbridge/chrome.json
+.venv/bin/runbridge-node run --settings node.yaml
 ```
+
+首次启动会生成长期身份、向 Hub 登记并上线，不需要先单独 register。登记失败时保留身份，以同一命令重试；后续身份复用与登记文件移除规则见[统一配置参考](../reference/部署配置与凭据.md)。
 
 保留浏览器和这个 Node 服务终端，不要同时运行另一份相同身份的 Node。Node 读取实际浏览器版本并探测资源；浏览器不可达时控制连接仍可能在线，但资源会不可用。
 

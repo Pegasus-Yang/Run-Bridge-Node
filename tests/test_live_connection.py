@@ -241,6 +241,54 @@ def test_replaced_node_process_stops_and_replacement_remains_online(runtime):
     evidence(test_name="duplicate_identity_replacement", details={"old_process_stopped": True, "replacement_online": True, "generation_increased": True})
 
 
+def test_two_yaml_nodes_register_start_and_restart_independently(runtime):
+    settings_files = []
+    identities = []
+    accesses = []
+    processes = []
+    for label in ("a", "b"):
+        directory = runtime.directory / label
+        directory.mkdir()
+        settings = directory / "node.yaml"
+        settings.write_text(f"hub_url: {runtime.url}\nname: office-{label}\nenrollment_token_file: {runtime.enrollment_file}\n")
+        process = runtime._spawn(project=NODE_PROJECT, name="runbridge-node", arguments=["run", "--settings", str(settings)], log_name=f"yaml-{label}.log")
+        runtime.nodes.append(process)
+        identity = directory / ".runbridge/node.json"
+        deadline = time.monotonic() + 8
+        while not identity.exists() and time.monotonic() < deadline:
+            assert process.poll() is None
+            time.sleep(0.03)
+        assert identity.exists()
+        # 生成身份后仍须等待上线，不能以文件存在代替登记结果。
+        deadline = time.monotonic() + 8
+        while "节点在线" not in (runtime.directory / f"yaml-{label}.log").read_text():
+            assert time.monotonic() < deadline and process.poll() is None
+            time.sleep(0.03)
+        access = runtime.grant(config=identity, filename=f"{label}/access.json")
+        runtime.wait_view(access=access)
+        settings_files.append(settings)
+        identities.append(identity)
+        accesses.append(access)
+        processes.append(process)
+    assert accesses[0]["node_id"] != accesses[1]["node_id"]
+    initial = [runtime.wait_view(access=access) for access in accesses]
+    assert all(process.poll() is None for process in processes)
+    before = identities[0].read_bytes()
+    runtime.stop(process=processes[0])
+    settings_files[0].write_text(f"hub_url: {runtime.url}\nname: office-a\n")
+    restarted = runtime._spawn(project=NODE_PROJECT, name="runbridge-node", arguments=["run", "--settings", str(settings_files[0])], log_name="yaml-a-restart.log")
+    runtime.nodes.append(restarted)
+    runtime.wait_view(access=accesses[0], minimum_generation=initial[0]["connection_generation"] + 1)
+    assert identities[0].read_bytes() == before
+    assert runtime.wait_view(access=accesses[1])["connection_generation"] == initial[1]["connection_generation"]
+    assert processes[1].poll() is None
+    logs = "\n".join(path.read_text() for path in runtime.logs)
+    for secret in [runtime.enrollment, *[json.loads(path.read_text())["node_token"] for path in identities], *[access["access_token"] for access in accesses]]:
+        if secret in logs:
+            raise AssertionError("YAML 启动日志包含凭据，内容已隐藏")
+    evidence(test_name="yaml_bootstrap_multiple_nodes", details={"distinct_identities": True, "simultaneously_online": 2, "restart_without_enrollment": True, "identity_preserved": True, "other_node_unaffected": True})
+
+
 def test_node_rejects_wrong_identity_without_retrying(runtime):
     configuration = runtime.register()
     bad = json.loads(configuration.read_text(encoding="utf-8"))

@@ -1,0 +1,15 @@
+# 所有本地相对路径都以本文件所在目录为基准。
+# Hub 地址和登记文件由 Hub 部署者提供；身份由 run 自动生成，不要手写秘密。
+hub_url: http://192.168.50.10:8787
+name: office-node
+identity_file: .runbridge/node.json
+enrollment_token_file: .runbridge/enrollment.token
+
+# 仅选择一种模式。本例使用 prepare-playwright 准备的默认独立运行时。
+playwright:
+  runtime_directory: .runbridge/playwright
+  node_executable: node
+  use_default_browser_cache: false
+  resource_id: chromium
+  launch_options:
+    headless: true

@@ -1,179 +1,85 @@
-# Node 受管理 Chromium：从运行时到启动
+# Node 受管理 Chromium：选择运行时并启动
 
 [文档导航](../README.md) · [返回部署步骤](../deployment/部署与运行.md) · [配置参数](../reference/部署配置与凭据.md)
 
-适用于 Node 0.5.0。此模式为每次会话创建独立 Chromium，任务结束后回收，不使用你日常 Chrome 的 Profile 或登录状态。给 Agent 提供 MCP 浏览器资源也选此模式。
+适用于 Node 0.5.0。每次会话创建新 Chromium 并在结束后回收；不复用日常浏览器的 Profile。开始前完成部署第 1～5 节，已安装本程序、收到登记文本并保存 `node.yaml`；不必事先执行登记命令。
 
-**开始前**：已完成部署指南第 1～5 节，本设备有 `~/runbridge-node/.venv/` 和登记成功的 `.runbridge/node.json`。没有完成时先返回部署指南，不要从这里直接开始安装两端。
+## 1. 运行环境要求与管理边界
 
-## 1. 进入 Node 目录，检查 Node.js 和 npm
+| 环境 | 本项目要求 | 安装与维护 |
+| --- | --- | --- |
+| Node.js | >=20，并使用官方仍支持的版本；常驻进程能找到 `node` 或配置实际路径 | [Node.js 官网](https://nodejs.org/en/download)、[支持周期](https://nodejs.org/en/about/previous-releases) |
+| npm | 仅准备 npm Playwright 时需要；正常运行使用已准备的模块 | [npm 官方说明](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) |
+| npm Playwright | 本版运行时要求 **1.63.0**，含 `node_modules/playwright` | [Playwright 官方安装](https://playwright.dev/docs/intro) |
+| Chromium 和系统库 | 与该 Playwright 版本对应的浏览器、目标操作系统所需库；有窗口模式还需图形会话 | [Playwright 浏览器与系统依赖](https://playwright.dev/docs/browsers) |
+| 字体 | 能覆盖实际页面语言，由浏览器所属用户使用 | 操作系统官方文档／设备管理员 |
 
-在 Node 设备终端：
+Node.js 的 `node` 与本项目 Python 命令 `runbridge-node` 不同。上述基础环境由用户或管理员准备，本项目不负责安装、升级或配置它们。
 
-```bash
-cd ~/runbridge-node
-node --version
-npm --version
-```
+启动前确认所选 Node.js 的 `--version` 能正常返回；命令路径存在不代表其动态库和运行环境完整。准备工具还要求所选环境中的 `npm --version` 正常。
 
-这里的 `node` 是 **Node.js**，用于运行浏览器服务；`runbridge-node` 是我们的 Python 程序，两者不是同一命令。需要 Node.js >=20，并且 Node.js、npm 两条命令都能正常返回版本。设备已有可用的受支持 LTS 版本时跳过安装。
+**为什么还需要 npm Playwright？**受管理模式通过公开的 Node.js `chromium.launchServer()` 提供原生远程协议；Python 的 `connect()` 连接该服务。Python Playwright 安装在 `.venv` 中不能替代这个服务端 API；因此不把 Python Playwright 当作 Node 的必装依赖。调用方与服务的 Playwright 主次版本还必须匹配，见[官方连接约束](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect)。
 
-使用 Homebrew 的 macOS／Linux，可安装 [node@22](https://formulae.brew.sh/formula/node@22)，并在本终端选择它：
+## 2. 运行时准备方式只选一种
 
-```bash
-brew install node@22
-export PATH="$(brew --prefix node@22)/bin:$PATH"
-node --version
-npm --version
-```
+### A. 已有运行时，或自行按官网准备
 
-没有 Homebrew 时，打开 [Node.js 官方下载页](https://nodejs.org/en/download)，选择设备的操作系统、CPU 架构和受支持的 LTS 安装方式，按页面步骤安装后重新打开终端。RunBridge 的最低版本要求不是建议安装已结束支持的旧版本，支持状态以 [Node.js 发布表](https://nodejs.org/en/about/previous-releases)为准。
+可以直接复用已有的 npm Playwright **1.63.0**。将其 npm 项目根目录填入下一节 `runtime_directory`：该目录中应有 `package.json` 和 `node_modules/playwright/`。这不是全局 `node` 可执行文件的位置，也不是 Python 的 site-packages。
 
-如果使用上面的 Homebrew 路径设置，每个新终端需重新设置，或让管理员在长期服务环境中固定对应路径。版本检查出错时先解决 Node.js 环境，不要继续准备浏览器。
+浏览器按同版 [Playwright 官方浏览器说明](https://playwright.dev/docs/browsers)准备。采用其默认浏览器缓存时，将 `use_default_browser_cache` 设为 `true`；用户自己设置的 `PLAYWRIGHT_BROWSERS_PATH` 也会保留。安装浏览器和启动 Node 必须使用可访问同一缓存的系统用户和环境。已有兼容浏览器无需重复下载。
 
-### Linux 无需改动全局软件的目录安装
+这条路线不要求执行 `prepare-playwright`，Node 启动时也不会执行 npm 安装、更新依赖或下载浏览器。若浏览器在自定义位置，还可使用配置参考中的 `launch_options.executablePath` 或 `channel`，兼容性由用户在目标环境核验。
 
-如果设备没有 Node.js，且不希望安装或更新全局 Homebrew 软件，可以把官方 Linux 二进制装在**本次 Node 部署目录内部**。下面支持 `aarch64/arm64` 和 `x86_64`；需要系统已有 `curl`、`tar`、`xz`、`sha256sum`。首次安装时在 Node 部署目录运行整段命令：
+### B. 选择项目提供的独立运行时准备工具
 
-```bash
-mkdir -p .runbridge/nodejs
-(
-    set -eu
-    cd .runbridge/nodejs
-    case "$(uname -m)" in
-        aarch64|arm64) rb_node_arch=arm64 ;;
-        x86_64) rb_node_arch=x64 ;;
-        *) echo "请从 Node.js 官网选择本机架构的受支持版本"; exit 1 ;;
-    esac
-    curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o SHASUMS256.txt
-    rb_node_archive=$(awk -v arch="$rb_node_arch" '$2 ~ ("^node-v22[.][0-9]+[.][0-9]+-linux-" arch "[.]tar[.]xz$") {print $2}' SHASUMS256.txt)
-    test -n "$rb_node_archive"
-    curl -fSL "https://nodejs.org/dist/latest-v22.x/$rb_node_archive" -o "$rb_node_archive"
-    awk -v name="$rb_node_archive" '$2 == name' SHASUMS256.txt > SELECTED-SHA256.txt
-    sha256sum -c SELECTED-SHA256.txt
-    rb_node_directory=$(basename "$rb_node_archive" .tar.xz)
-    test ! -e "$rb_node_directory"
-    tar -xJf "$rb_node_archive"
-    printf '%s\n' "$PWD/$rb_node_directory/bin/node" > node-executable.txt
-)
-rb_node_executable=$(cat .runbridge/nodejs/node-executable.txt)
-export PATH="$(dirname "$rb_node_executable"):$PATH"
-node --version
-npm --version
-```
-
-这会从 Node.js 官方发布目录选择 22.x 的 Linux 包，核对官方 SHA-256，再解压到当前部署的 `.runbridge/nodejs/`，不安装全局包。应看到摘要检查 `OK`，随后两条版本号。下载失败或校验失败时先解决该步骤，不继续准备浏览器。
-
-`node-executable.txt` 只记录刚安装的 Node.js 路径，便于新终端找回；不是 RunBridge 的配置。已有该目录时不重复执行解压，直接复用记录。新开终端需要运行：
+需要为这次部署建立独立 npm 项目和浏览器缓存时，可在部署目录执行：
 
 ```bash
 cd ~/runbridge-node
-rb_node_executable=$(cat .runbridge/nodejs/node-executable.txt)
-export PATH="$(dirname "$rb_node_executable"):$PATH"
-node --version
-npm --version
-```
-
-把 `~/runbridge-node` 换成实际部署目录。这一步只改变当前终端环境，不写入 shell 启动文件，也不影响其他部署。下面的配置生成命令会把已选 Node.js 的绝对路径写入 JSON，使常驻 Node 不依赖以后 SSH 终端的 PATH。
-
-## 2. 下载本 Node 专用的浏览器运行时
-
-在同一终端执行：
-
-```bash
 .venv/bin/runbridge-node prepare-playwright --runtime-dir .runbridge/playwright --node-executable node
 ```
 
-命令会使用 Node 安装包附带的锁文件，安装 npm Playwright **1.63.0** 和对应 Chromium。它与 Python 的 `.venv` 分开，下载过程需要网络，耗时取决于网络和缓存。
+它按包内锁文件安装 npm Playwright 1.63.0，并调用官方安装器下载 Chromium 到该目录的 `browsers/`；不会安装 Node.js、系统库或字体。需要 npm、Node.js、网络及目录写权限。已存在不同依赖文件时拒绝覆盖，使用新目录。
 
-成功时最后输出类似：
+这条命令的价值是固定已验证版本、隔离依赖与浏览器缓存、避免误改其他部署。**这是可选便利工具，不是原生协议的强制步骤。**已有或自行维护的符合要求的运行时同样可用。
 
-```text
-Playwright 1.63.0 运行时已准备：/你的主目录/runbridge-node/.runbridge/playwright
+## 3. 浏览器设置放进同一个 node.yaml
+
+完成 B 时，在部署第 5 节的 `node.yaml` 中增加下面一段；已有 `chrome` 段时先移除它，不能同时选择两种浏览器：
+
+```yaml
+playwright:
+  launch_options:
+    headless: true
 ```
 
-目录中应有：
+默认值已对应 B 的 `.runbridge/playwright`、`node` 命令、`chromium` 资源 ID 和独立 `browsers/` 缓存。不需要抄录浏览器版本、进程 ID、动态端口或另存 `playwright.json`。
 
-```text
-.runbridge/playwright/
-├── package.json
-├── package-lock.json
-├── node_modules/playwright/       # npm 浏览器服务库
-├── browsers/                     # 对应版本的 Chromium
-└── npm-cache/                    # 本次安装缓存
+完成 A、运行时位于 `/srv/browser-runtime` 并使用官方默认缓存时，改用下面的 `playwright` 段，不要把两段同时复制：
+
+```yaml
+playwright:
+  runtime_directory: /srv/browser-runtime
+  use_default_browser_cache: true
+  launch_options:
+    headless: true
 ```
 
-这些文件由命令产生，不需要你从另一个项目复制，也不应自己编写 package-lock.json。
+`/srv/browser-runtime` 要改成你实际准备的 npm 项目目录。Node.js 不在服务 PATH 中时，在 `playwright` 内补 `node_executable: /实际路径/bin/node`。这些是本机运行位置，不是调用方的路径。
 
-遇到“存在不同的依赖文件”时，说明目录已经属于另一套依赖。保留它，选择新的独立目录，例如 `.runbridge/playwright-1.63.0`；准备命令和下一节 JSON 的 `runtime_directory` 必须同时改成那个目录。
+完整可复制文件见 [Node 启动 YAML](../reference/examples/Node启动配置.yaml)，所有字段、路径基准和旧 JSON 兼容方式见配置参考。
 
-### Linux 首次运行还需要系统库
-
-上面的命令下载浏览器，不负责安装 Linux 系统库。若目标系统尚未准备，由有管理员权限的人在本设备的 Node 部署目录执行：
+## 4. 用同一条命令登记并启动
 
 ```bash
-node .runbridge/playwright/node_modules/playwright/cli.js install-deps chromium
+cd ~/runbridge-node
+.venv/bin/runbridge-node run --settings node.yaml
 ```
 
-该命令可能请求 sudo 并安装系统包；没有权限时交给设备管理员完成，不能靠修改 JSON 跳过缺失库。命令语义见 [Playwright 系统依赖说明](https://playwright.dev/docs/browsers#install-system-dependencies)。使用不同运行时目录时一并修改命令中的目录。macOS 不执行这条 Linux 准备步骤。
+首次启动自动创建 0600 权限的身份文件，向配置中的 Hub 登记，然后连接和上报能力；正常应先见“节点登记完成”，再见“节点在线”。不要手写 Node ID 或身份令牌。
 
-## 3. 生成 playwright.json
+如果登记失败，保留生成的身份，修复错误后执行同一启动命令；会复用同一个 ID 和令牌重试，不会新建另一节点。保留登记文件配置时，每次进程启动都会做一次幂等登记，重连不重复登记。确认首次成功后，可以从 YAML 中移除 `enrollment_token_file`，之后仅凭原身份启动；环境中也不再提供登记令牌即可。
 
-下面的配置使用默认资源 ID `chromium`，无窗口启动，适合第一次接入。复制**整段命令**到 Node 部署目录执行：
+终端保持运行。浏览器实际探测失败时 Node 可能已在线，但资源不可用，要按官方要求核对运行时、浏览器缓存和系统环境；本程序不会在启动时自动修复或安装它们。
 
-```bash
-.venv/bin/python - <<'PYCODE'
-import json
-import os
-import shutil
-
-node_executable = shutil.which("node")
-if node_executable is None:
-    raise RuntimeError("请先完成 Node.js 安装，并在本终端确认 node --version 正常")
-
-values = {
-    "runtime_directory": ".runbridge/playwright",
-    "node_executable": node_executable,
-    "resource_id": "chromium",
-    "launch_options": {"headless": True},
-}
-descriptor = os.open(".runbridge/playwright.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-    json.dump(values, output, ensure_ascii=False, indent=2)
-    output.write("\n")
-print("已保存 .runbridge/playwright.json")
-PYCODE
-```
-
-成功会保存 JSON。已有文件时拒绝覆盖；需要修改时用编辑器打开原文件，保留正确的运行时目录。
-
-| 字段 | 本例值从哪里来／为什么这样填 |
-| --- | --- |
-| `runtime_directory` | 第 2 节实际准备的目录；相对 Node 工作目录解析，不是相对 JSON 所在目录 |
-| `node_executable` | 自动从第 1 节当前终端选择的 Node.js 取得绝对路径；SSH 新终端无需靠 PATH 再猜版本 |
-| `resource_id` | 你给资源起的 ID，本教程用 `chromium`；后面签发许可使用相同值 |
-| `launch_options.headless` | `true` 无窗口；改为 `false` 才显示窗口，Linux 还须有可用图形会话 |
-
-生成脚本中的 `True` 是 Python 写法，保存后的 JSON 会自动变成 `true`。如果手工编辑 JSON，用双引号和小写 `true/false`，不要写注释、尾逗号、`~` 或 `$HOME`。
-
-生成前用 `command -v node` 可确认选择的实际路径；更换或移动 Node.js 后，相应更新 JSON 的 `node_executable`。如果手写配置为命令名 `node`，服务进程仍需正确 PATH。全部启动字段、目录、代理和单位见配置参考；第一次运行不需要自行补其他字段。
-
-## 4. 启动并保持 Node 运行
-
-在同一 Node 终端：
-
-```bash
-.venv/bin/runbridge-node run --config .runbridge/node.json --playwright-config .runbridge/playwright.json
-```
-
-`--config` 读取登记身份，`--playwright-config` 读取刚生成的浏览器配置；不要同时添加 `--chrome-config`。
-
-启动时会短暂启动并关闭一次探测浏览器，再上报能力。命令持续运行、没有新的输入提示符是正常现象。**保持这个终端打开**，不要再启动第二个相同身份的 Node。
-
-现在返回[部署指南第 7 节](../deployment/部署与运行.md#7-检查状态并向调用方交付访问文件)，在**另一个终端**签发许可、查询 ONLINE／READY／FREE，并交付调用方。只完成本页并不代表调用方已经连过浏览器。
-
-## 5. 后续操作
-
-普通 SDK／HTTP 使用由 Hub 项目手册说明；Agent 接入补充阅读 [MCP 准备](MCP对接准备.md)。MCP 和受管理浏览器不要求 Node 安装 Browscreen；普通 SDK 受管理会话没有独立持续画面流。
-
-停止时先释放会话，再在 Node 服务终端按 Ctrl+C，确认本次浏览器和 helper 已回收。访问业务网站、登录及业务断言由调用方完成；新会话不会继承上一会话登录。目录输出和清理含义见[运行与排障](../deployment/运行与排障.md)。
+返回[部署指南第 7 节](../deployment/部署与运行.md#7-检查状态并向调用方交付访问文件)，在新终端签发许可，确认 ONLINE、READY/FREE，再交付调用方。结束时先释放会话再正常停止 Node。
