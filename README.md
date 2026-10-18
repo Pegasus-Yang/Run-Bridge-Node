@@ -6,9 +6,11 @@ RunBridge Node 部署在浏览器所有者的设备，主动连接远程 Hub，�
 
 ## 部署 Node
 
-先从 Hub 部署者取得可达的服务基址和登记文件，再按[部署与运行](doc/deployment/部署与运行.md)安装 Node wheel、登记身份并启用浏览器。文件格式、字段与全部 CLI 参数见[Node 配置与凭据](doc/reference/部署配置与凭据.md)。
+第一次接入从[部署与运行](doc/deployment/部署与运行.md)第 1 节开始。它先列明向谁取得什么：真实 Hub 地址、Hub 生成的单行 `enrollment.token`、Node 安装包和手册；再逐步说明文件保存、安装、登记、选择浏览器模式、查询状态和交付访问许可。
 
-- [首次接入与许可管理](doc/user-guide/快速开始.md)：使用已有远程 Hub 登记、查看状态、签发和撤销访问许可。
+每一步都标出操作设备、目录、需要替换的值和预期结果。浏览器模式指南执行完后返回部署第 7 节，无需重新启动 Node；参数和字段需要时再查[Node 配置与凭据](doc/reference/部署配置与凭据.md)。
+
+- [状态检查与许可管理](doc/user-guide/快速开始.md)：部署后的日常查询、签发、交付、撤销和续期。
 - [Chrome 复用](doc/user-guide/Chrome复用快速开始.md)：授权已有浏览器实例及其登录状态。
 - [受管理 Chromium](doc/user-guide/Playwright快速开始.md)：由 Node 为每次会话新建和回收浏览器。
 - [MCP 对接准备](doc/user-guide/MCP对接准备.md)：为 Agent 提供受管理资源和访问许可。

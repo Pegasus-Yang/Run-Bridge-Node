@@ -6,13 +6,18 @@
 
 ## 部署与日常使用
 
-1. [部署与运行](deployment/部署与运行.md)：Node wheel 安装、远程连接、登记、资源、代理、字体及维护。
-2. [Node 配置与凭据](reference/部署配置与凭据.md)：登记令牌、身份、浏览器 JSON、访问许可和全部 CLI 参数。
-3. [首次接入与许可管理](user-guide/快速开始.md)：登记验证、状态查询、交付和撤销许可。
-4. 选择[Chrome 复用](user-guide/Chrome复用快速开始.md)或[受管理 Chromium](user-guide/Playwright快速开始.md)。
-5. [MCP 对接准备](user-guide/MCP对接准备.md)：向 Agent 提供受管理资源。
-6. [画面采集](user-guide/浏览器画面采集.md)：已有 Chrome 的可选扩展与上报检查。
-7. [运行与排障](deployment/运行与排障.md)、[配置文件示例](reference/examples/README.md)。
+1. **首次操作从[部署与运行](deployment/部署与运行.md)第 1～5 节开始**：接收 Hub 地址和真实登记文件、安装 Node、自动生成并登记身份。
+2. 按部署第 6 节选择[Chrome 复用](user-guide/Chrome复用快速开始.md)或[受管理 Chromium](user-guide/Playwright快速开始.md)，在所选指南完成配置和一次启动。
+3. 按指南返回部署第 7 节，在新终端核对状态、生成访问 JSON 并交给调用方；保持原 Node 服务运行，不重复启动。
+
+部署完成后再按需阅读：
+
+- [状态检查与许可管理](user-guide/快速开始.md)：日常查询、单独签发、交付、撤销和续期。
+- [MCP 对接准备](user-guide/MCP对接准备.md)：向 Agent 使用者交付受管理资源和 MCP 信息。
+- [画面采集](user-guide/浏览器画面采集.md)：已有 Chrome 的可选扩展与实际画面检查。
+- [运行与排障](deployment/运行与排障.md)、[配置文件示例](reference/examples/README.md)。
+
+[Node 配置与凭据](reference/部署配置与凭据.md)供查字段、默认值与参数，不是首次操作的必读前置步骤。正文已包含配置生成命令和文件内容说明。
 
 Hub 的 HTTP／MCP、SDK 调用和画面订阅接口由 Hub 项目的用户指南及接口参考维护。Node 所有者向调用方交付访问文件和资源信息即可。
 
