@@ -31,6 +31,51 @@ npm --version
 
 如果使用上面的 Homebrew 路径设置，每个新终端需重新设置，或让管理员在长期服务环境中固定对应路径。版本检查出错时先解决 Node.js 环境，不要继续准备浏览器。
 
+### Linux 无需改动全局软件的目录安装
+
+如果设备没有 Node.js，且不希望安装或更新全局 Homebrew 软件，可以把官方 Linux 二进制装在**本次 Node 部署目录内部**。下面支持 `aarch64/arm64` 和 `x86_64`；需要系统已有 `curl`、`tar`、`xz`、`sha256sum`。首次安装时在 Node 部署目录运行整段命令：
+
+```bash
+mkdir -p .runbridge/nodejs
+(
+    set -eu
+    cd .runbridge/nodejs
+    case "$(uname -m)" in
+        aarch64|arm64) rb_node_arch=arm64 ;;
+        x86_64) rb_node_arch=x64 ;;
+        *) echo "请从 Node.js 官网选择本机架构的受支持版本"; exit 1 ;;
+    esac
+    curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o SHASUMS256.txt
+    rb_node_archive=$(awk -v arch="$rb_node_arch" '$2 ~ ("^node-v22[.][0-9]+[.][0-9]+-linux-" arch "[.]tar[.]xz$") {print $2}' SHASUMS256.txt)
+    test -n "$rb_node_archive"
+    curl -fSL "https://nodejs.org/dist/latest-v22.x/$rb_node_archive" -o "$rb_node_archive"
+    awk -v name="$rb_node_archive" '$2 == name' SHASUMS256.txt > SELECTED-SHA256.txt
+    sha256sum -c SELECTED-SHA256.txt
+    rb_node_directory=$(basename "$rb_node_archive" .tar.xz)
+    test ! -e "$rb_node_directory"
+    tar -xJf "$rb_node_archive"
+    printf '%s\n' "$PWD/$rb_node_directory/bin/node" > node-executable.txt
+)
+rb_node_executable=$(cat .runbridge/nodejs/node-executable.txt)
+export PATH="$(dirname "$rb_node_executable"):$PATH"
+node --version
+npm --version
+```
+
+这会从 Node.js 官方发布目录选择 22.x 的 Linux 包，核对官方 SHA-256，再解压到当前部署的 `.runbridge/nodejs/`，不安装全局包。应看到摘要检查 `OK`，随后两条版本号。下载失败或校验失败时先解决该步骤，不继续准备浏览器。
+
+`node-executable.txt` 只记录刚安装的 Node.js 路径，便于新终端找回；不是 RunBridge 的配置。已有该目录时不重复执行解压，直接复用记录。新开终端需要运行：
+
+```bash
+cd ~/runbridge-node
+rb_node_executable=$(cat .runbridge/nodejs/node-executable.txt)
+export PATH="$(dirname "$rb_node_executable"):$PATH"
+node --version
+npm --version
+```
+
+把 `~/runbridge-node` 换成实际部署目录。这一步只改变当前终端环境，不写入 shell 启动文件，也不影响其他部署。下面的配置生成命令会把已选 Node.js 的绝对路径写入 JSON，使常驻 Node 不依赖以后 SSH 终端的 PATH。
+
 ## 2. 下载本 Node 专用的浏览器运行时
 
 在同一终端执行：
@@ -80,10 +125,15 @@ node .runbridge/playwright/node_modules/playwright/cli.js install-deps chromium
 .venv/bin/python - <<'PYCODE'
 import json
 import os
+import shutil
+
+node_executable = shutil.which("node")
+if node_executable is None:
+    raise RuntimeError("请先完成 Node.js 安装，并在本终端确认 node --version 正常")
 
 values = {
     "runtime_directory": ".runbridge/playwright",
-    "node_executable": "node",
+    "node_executable": node_executable,
     "resource_id": "chromium",
     "launch_options": {"headless": True},
 }
@@ -100,13 +150,13 @@ PYCODE
 | 字段 | 本例值从哪里来／为什么这样填 |
 | --- | --- |
 | `runtime_directory` | 第 2 节实际准备的目录；相对 Node 工作目录解析，不是相对 JSON 所在目录 |
-| `node_executable` | 第 1 节能正常运行的 Node.js 命令；服务环境也必须能找到它 |
+| `node_executable` | 自动从第 1 节当前终端选择的 Node.js 取得绝对路径；SSH 新终端无需靠 PATH 再猜版本 |
 | `resource_id` | 你给资源起的 ID，本教程用 `chromium`；后面签发许可使用相同值 |
 | `launch_options.headless` | `true` 无窗口；改为 `false` 才显示窗口，Linux 还须有可用图形会话 |
 
 生成脚本中的 `True` 是 Python 写法，保存后的 JSON 会自动变成 `true`。如果手工编辑 JSON，用双引号和小写 `true/false`，不要写注释、尾逗号、`~` 或 `$HOME`。
 
-Node.js 不在服务 PATH 中时，先用 `command -v node` 取得实际绝对路径，再填入 `node_executable`。全部启动字段、目录、代理和单位见配置参考；第一次运行可以直接使用本例，不需要自行补其他字段。
+生成前用 `command -v node` 可确认选择的实际路径；更换或移动 Node.js 后，相应更新 JSON 的 `node_executable`。如果手写配置为命令名 `node`，服务进程仍需正确 PATH。全部启动字段、目录、代理和单位见配置参考；第一次运行不需要自行补其他字段。
 
 ## 4. 启动并保持 Node 运行
 
