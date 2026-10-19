@@ -21,6 +21,11 @@ tools:  # 默认 {}，此时只接入控制连接，不提供浏览器资源。
       # args: []  # 默认省略：采用 Playwright 默认参数；可追加自定义参数。
       # 项目始终在最后追加 --password-store=basic、--use-mock-keychain，专用浏览器不使用系统凭据库。
       # ignore_default_args: []  # 默认不忽略；过滤 SDK 默认参数也不会移除上面的项目存储参数。
+      # chromium_sandbox: false  # Playwright 默认 false；启用需系统支持。
+      # env: {LANG: "zh_CN.UTF-8"}  # 默认继承进程环境；自定义时确认必要系统/显示环境。
+      # downloads_path: downloads  # 默认 Playwright 临时目录；指定路径相对本 YAML。
+      # traces_dir: traces  # 默认不指定用户目录；指定路径相对本 YAML，不自动开启远程 trace 功能。
+      # artifacts_dir: artifacts  # 默认 Playwright 临时目录；指定路径相对本 YAML。
       # slow_mo: 0  # 默认 0 毫秒；每步增加延迟，用于观察，不代替动作超时。
       # proxy: {server: "http://proxy.example:8080"}  # 默认无代理；只影响浏览器访问网站。
 # 已有 Chrome 改为以下结构，并删除 managed 的 launch_options/browser_cache_directory：
