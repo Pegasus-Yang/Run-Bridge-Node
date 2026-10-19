@@ -15,14 +15,14 @@ RunBridge Node 部署在浏览器设备上，主动连接已部署的 Hub，在�
 - **多个独立实例**：同机可用不同配置和身份运行多个 Node；每个实例管理自己的执行资源。
 - **实际画面与清理状态**：支持受管理页面画面，borrowed 画面可选安装扩展；清理未确认时保留隔离状态。
 
-当前版本 **0.6.0**，与 Hub **0.6.0** 配套。需要 Python **3.14.x**；不需要单独安装 Node.js/npm，也无需启动或记录 Playwright BrowserServer。
+当前版本 **0.7.0**，与 Hub **0.7.0** 配套。需要 Python **3.14.x**；不需要单独安装 Node.js/npm，也无需启动或记录 Playwright BrowserServer。
 
 ## 快速部署
 
 以下操作全部在 **Node 设备**执行。先准备 Python 3.14.x 和全局 [uv](https://docs.astral.sh/uv/getting-started/installation/)，并取得：
 
 - Hub 部署者交付的可达基址及真实 `enrollment.token` 文件。
-- 发布负责人交付的 `runbridge_node-0.6.0-py3-none-any.whl`。
+- 发布负责人交付的 `runbridge_node-0.7.0-py3-none-any.whl`。
 
 将两个文件保存到 `~/Downloads/`，创建独立部署目录：
 
@@ -30,7 +30,7 @@ RunBridge Node 部署在浏览器设备上，主动连接已部署的 Hub，在�
 mkdir -p ~/runbridge-node
 cd ~/runbridge-node
 uv venv --python 3.14 .venv
-uv pip install --python .venv/bin/python "$HOME/Downloads/runbridge_node-0.6.0-py3-none-any.whl[playwright]" -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+uv pip install --python .venv/bin/python "$HOME/Downloads/runbridge_node-0.7.0-py3-none-any.whl[playwright]" -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 umask 077
 mkdir -p .runbridge
 cp -n ~/Downloads/enrollment.token .runbridge/enrollment.token
