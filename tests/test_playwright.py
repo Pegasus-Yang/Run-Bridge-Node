@@ -98,7 +98,11 @@ async def test_borrowed_chrome_release_keeps_original_page_cookie_and_storage(tm
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(b'<html><input id="field"><h1>borrowed</h1></html>')
+            self.wfile.write(
+                b'<html><input id="field"><h1>borrowed</h1>'
+                b"<button onclick=\"document.querySelector('#result').textContent='clicked'\">save</button>"
+                b'<p id="result"></p></html>'
+            )
 
         def log_message(self, *args):
             pass
@@ -147,6 +151,8 @@ async def test_borrowed_chrome_release_keeps_original_page_cookie_and_storage(tm
                 cookies=[{"name": "login", "value": "kept", "url": url}]
             )
             await page.evaluate(expression="localStorage.setItem('owner','kept')")
+            background = await context.new_page()
+            await background.bring_to_front()
             messages = asyncio.Queue()
 
             async def collect(value):
@@ -165,7 +171,11 @@ async def test_borrowed_chrome_release_keeps_original_page_cookie_and_storage(tm
             )
             target = Target(
                 type="page",
-                id=metadata["objects"]["default_page_id"],
+                id=next(
+                    item["id"]
+                    for item in metadata["objects"]["pages"]
+                    if item["url"] == url + "/"
+                ),
                 locator=[{"method": "locator", "params": {"selector": "#field"}}],
             )
             await worker.send(
@@ -183,8 +193,46 @@ async def test_borrowed_chrome_release_keeps_original_page_cookie_and_storage(tm
                 while (message := await messages.get())["type"] != "result":
                     pass
             assert message["status"] == "SUCCEEDED"
+            await background.bring_to_front()
+            await worker.send(
+                value=Execute(
+                    request_id="click_background_page",
+                    session_id="session_b",
+                    connection_generation=1,
+                    remaining_ms=3000,
+                    method="locator.click",
+                    target=Target(
+                        type="page",
+                        id=target.id,
+                        locator=[
+                            {
+                                "method": "get_by_role",
+                                "params": {
+                                    "role": "button",
+                                    "name": "save",
+                                    "exact": True,
+                                },
+                            }
+                        ],
+                    ),
+                ).model_dump(mode="json")
+            )
+            async with asyncio.timeout(5):
+                while True:
+                    message = await messages.get()
+                    if (
+                        message["type"] == "result"
+                        and message["request_id"] == "click_background_page"
+                    ):
+                        break
+            assert message["status"] == "SUCCEEDED", message
+            assert await page.locator(selector="#result").inner_text() == "clicked"
             assert await worker.close() == "COMPLETE"
-            assert process.poll() is None and not page.is_closed()
+            assert (
+                process.poll() is None
+                and not page.is_closed()
+                and not background.is_closed()
+            )
             assert (
                 await page.locator(selector="#field").input_value() == "worker changed"
             )

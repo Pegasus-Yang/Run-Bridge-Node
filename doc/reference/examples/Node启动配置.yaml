@@ -18,7 +18,9 @@ tools:  # 默认 {}，此时只接入控制连接，不提供浏览器资源。
       timeout: 20000  # 本项目启动默认 20000 毫秒；范围 1～30000，不接受无限超时。
       # channel: chrome  # 默认省略：使用匹配的 Chromium；可由所有者选择已准备的兼容浏览器。
       # executable_path: /absolute/path/to/chromium  # 默认省略；自选可执行文件的兼容性由所有者确认。
-      # args: []  # 默认省略：采用 Playwright 默认参数；自定义参数需自行确认对浏览器的影响。
+      # args: []  # 默认省略：采用 Playwright 默认参数；可追加自定义参数。
+      # 项目始终在最后追加 --password-store=basic、--use-mock-keychain，专用浏览器不使用系统凭据库。
+      # ignore_default_args: []  # 默认不忽略；过滤 SDK 默认参数也不会移除上面的项目存储参数。
       # slow_mo: 0  # 默认 0 毫秒；每步增加延迟，用于观察，不代替动作超时。
       # proxy: {server: "http://proxy.example:8080"}  # 默认无代理；只影响浏览器访问网站。
 # 已有 Chrome 改为以下结构，并删除 managed 的 launch_options/browser_cache_directory：

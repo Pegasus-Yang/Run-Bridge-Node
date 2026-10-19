@@ -4,6 +4,8 @@
 
 managed 使用 Python chromium.launch，新建 context/page；borrowed 使用 Python connect_over_cdp(no_defaults=True)，枚举已有页面。无需 npm BrowserServer、launchServer 或导出的原生 wsEndpoint。内部 Python driver 的存在是 Playwright 包自己的实现，项目不要求单独的系统 Node.js。
 
+managed 显式保留 `--password-store=basic` 与 `--use-mock-keychain`，专用测试浏览器不使用系统凭据库，详见[测试数据存储](../deployment/浏览器凭据与测试数据.md)。borrowed 的鼠标、键盘与表单输入先激活所指定 Page，避免后台页暂停动画帧而卡在 actionability 等待；只读操作不激活页面。
+
 Node 与 worker 以 4 字节大端长度 + UTF-8 JSON 管道通信，单消息最大 16 MiB。Hub 到 Node 的执行 WS 也是项目 JSON，不是 SDK 对象协议。session_ready 的页面目录放在执行通道，确认后才通过小控制消息完成准备。
 
 对象有当前会话的不可猜用途编号，目标类型/会话归属/关闭状态均在执行前验证；Locator 是有类型的步骤列表。工具适配器显式实现 33 项方法，不按远程属性路径反射，不执行传入 Python 或 evaluate 脚本。DOM 采集只运行项目固定脚本。

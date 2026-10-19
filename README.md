@@ -11,5 +11,6 @@ RunBridge Node 部署在浏览器设备上，主动连接远程 Hub，并在本�
 - [同机多个 Node](doc/deployment/同机运行多个Node.md)
 - [YAML 与凭据格式](doc/reference/部署配置与凭据.md)、[画面采集](doc/user-guide/浏览器画面采集.md)
 - [排障与升级](doc/deployment/运行与排障.md)、[开发说明](doc/development/本地开发与联调.md)
+- [浏览器凭据与测试数据](doc/deployment/浏览器凭据与测试数据.md)：系统钥匙链、本地私有账号文件与浏览器 Profile 的边界。
 
 [完整文档导航](doc/README.md)。调用方 HTTP/MCP 接入规则在 Hub 项目中；本手册只说明 Node 所有者的设备操作。

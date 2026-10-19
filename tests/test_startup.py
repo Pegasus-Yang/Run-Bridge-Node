@@ -1,7 +1,8 @@
 """统一 YAML 的路径、登记重试与浏览器选择契约。"""
 
 from pathlib import Path
-from unittest.mock import AsyncMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from pydantic import ValidationError
@@ -120,6 +121,40 @@ async def test_missing_initial_credentials_do_not_create_identity(
 
 def test_browser_cache_default_does_not_override_official_environment():
     assert PlaywrightConfig().browser_cache_directory is None
+
+
+@pytest.mark.parametrize(
+    "ignore", [True, ["--use-mock-keychain", "--password-store=basic"]]
+)
+async def test_managed_browser_keeps_local_credential_store_when_defaults_filtered(
+    monkeypatch, ignore
+):
+    from runbridge_node.tools.playwright import PlaywrightTool
+
+    launch = AsyncMock(side_effect=RuntimeError("launch captured"))
+    driver = SimpleNamespace(chromium=SimpleNamespace(launch=launch))
+    monkeypatch.setattr(
+        "runbridge_node.tools.playwright.async_playwright",
+        Mock(return_value=SimpleNamespace(start=AsyncMock(return_value=driver))),
+    )
+    tool = PlaywrightTool(
+        config={
+            "mode": "managed",
+            "launch_options": {
+                "args": ["--password-store=gnome", "--lang=zh-CN"],
+                "ignore_default_args": ignore,
+            },
+        },
+        session_id="session_test",
+        emit=AsyncMock(),
+    )
+    with pytest.raises(RuntimeError, match="launch captured"):
+        await tool.open()
+    options = launch.call_args.kwargs
+    assert options["args"][-2:] == ["--password-store=basic", "--use-mock-keychain"]
+    assert "--password-store=gnome" not in options["args"]
+    assert "--lang=zh-CN" in options["args"]
+    assert options["ignore_default_args"] == ignore
 
 
 def test_yaml_and_legacy_cli_parameters_cannot_be_mixed(monkeypatch, capsys):

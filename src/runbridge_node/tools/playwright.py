@@ -131,9 +131,19 @@ class PlaywrightTool:
         self.playwright = await async_playwright().start()
         metadata = {"runtime_version": version("playwright"), "ownership": self.mode}
         if self.mode == "managed":
-            self.browser = await self.playwright.chromium.launch(
-                **{"timeout": 20000, **self.config["launch_options"]}
-            )
+            options = {"timeout": 20000, **self.config["launch_options"]}
+            # 专用测试浏览器不访问系统凭据库；即使过滤 SDK 默认参数也保留此约束。
+            options["args"] = [
+                *[
+                    arg
+                    for arg in options.get("args") or []
+                    if arg.split("=", 1)[0]
+                    not in {"--password-store", "--use-mock-keychain"}
+                ],
+                "--password-store=basic",
+                "--use-mock-keychain",
+            ]
+            self.browser = await self.playwright.chromium.launch(**options)
             cdp = await self.browser.new_browser_cdp_session()
             data = await cdp.send(method="SystemInfo.getProcessInfo")
             pid = next(
@@ -277,6 +287,20 @@ class PlaywrightTool:
             ):
                 raise ActionError(code="INVALID_NAVIGATION_URL")
         self.entered = spec.mutating
+        if self.mode == "borrowed" and request.method in {
+            "page.keyboard.press",
+            "page.mouse.wheel",
+            "locator.fill",
+            "locator.click",
+            "locator.press",
+            "locator.hover",
+            "locator.select_option",
+            "locator.set_checked",
+            "locator.drag_to",
+            "locator.set_input_files",
+        }:
+            # 原 Chrome 的后台页可能暂停动画帧，先激活明确指定的输入目标。
+            await value.bring_to_front()
         match request.method:
             case "browser.contexts":
                 result = [
