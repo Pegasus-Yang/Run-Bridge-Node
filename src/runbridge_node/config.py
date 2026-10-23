@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import yaml
 from pydantic import AwareDatetime, Field, SecretStr, field_validator
 
 from runbridge_node.protocol import Identifier, Model
@@ -67,6 +68,15 @@ class AccessConfig(Model):
     grant_id: Identifier
     access_token: SecretStr
     expires_at: AwareDatetime | None = None
+
+    @classmethod
+    def load(cls, *, path: Path):
+        """读取 Hub 导出的五字段 JSON 或 YAML，不猜测设备身份。"""
+        try:
+            values = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            raise ValueError("访问文件格式无效，输入内容已隐藏") from None
+        return cls.model_validate(values)
 
     @field_validator("hub_url")
     @classmethod

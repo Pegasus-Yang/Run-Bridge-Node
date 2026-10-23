@@ -1,4 +1,4 @@
-"""Node 登记、运行、许可管理和结构化查询入口。"""
+"""Node 登记、运行、执行和结构化查询入口。"""
 
 import argparse
 import asyncio
@@ -13,8 +13,8 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from runbridge_node.client import ClientError, NodeClient, inspect_node, request_json
-from runbridge_node.config import AccessConfig, NodeConfig
-from runbridge_node.protocol import GrantRequest, SessionCreate, SessionView
+from runbridge_node.config import AccessConfig
+from runbridge_node.protocol import SessionCreate, SessionView
 from runbridge_node.visual_protocol import SessionQueryView
 from runbridge_node.executor import PlaywrightExecutor
 from runbridge_node.startup import RunSettings, prepare_identity
@@ -26,7 +26,7 @@ async def execute(*, args) -> None:
     :param args: 已解析命令参数。
     """
     if args.command == "session":
-        access = AccessConfig.model_validate_json(args.access_file.read_text(encoding="utf-8"))
+        access = AccessConfig.load(path=args.access_file)
         if args.action == "create":
             body = SessionCreate(resource_id=args.resource_id, tool=args.tool, request_id=args.request_id or f"open_{uuid4().hex}", lease_seconds=args.lease_seconds)
             result = await request_json(hub_url=access.hub_url, method="POST", path=f"/v2/nodes/{access.node_id}/sessions", token=access.access_token.get_secret_value(), body=body.model_dump(mode="json"), timeout=40)
@@ -36,7 +36,7 @@ async def execute(*, args) -> None:
         print(view_type.model_validate(result).model_dump_json(indent=2))
         return
     if args.command == "inspect":
-        access = AccessConfig.model_validate_json(args.access_file.read_text(encoding="utf-8")) if args.access_file is not None else None
+        access = AccessConfig.load(path=args.access_file) if args.access_file is not None else None
         hub_url = args.hub_url or (access.hub_url if access is not None else None)
         token = access.access_token.get_secret_value() if access is not None else os.environ.get("RUNBRIDGE_ACCESS_TOKEN")
         if not hub_url or not token:
@@ -48,47 +48,25 @@ async def execute(*, args) -> None:
         _, result = await prepare_identity(settings=RunSettings(hub_url=args.hub_url, identity_file=args.config, name=args.name, enrollment_token_file=args.enrollment_token_file), require_registration=True)
         print(result.model_dump_json(indent=2))
         return
-    settings = None
-    if args.command == "run":
-        settings = RunSettings.load(path=args.settings)
-        config, registered = await prepare_identity(settings=settings)
-        if registered is not None:
-            logging.info("节点登记完成 node_id=%s created=%s", registered.node_id, registered.created)
-    else:
-        config = NodeConfig.load(path=args.config or Path(".runbridge/node.json"))
+    settings = RunSettings.load(path=args.settings)
+    config, registered = await prepare_identity(settings=settings)
+    if registered is not None:
+        logging.info("节点登记完成 node_id=%s created=%s", registered.node_id, registered.created)
     executor = None
-    if args.command == "run" and "playwright" in settings.tools:
+    if "playwright" in settings.tools:
         from importlib.util import find_spec
         if find_spec("playwright") is None:
             raise ClientError("缺少 Python Playwright；请在当前虚拟环境安装 runbridge-node[playwright]")
         executor = PlaywrightExecutor(identity=config, config=settings.tools["playwright"], state_directory=settings.identity_file.parent / f"state-{config.node_id}")
     client = NodeClient(config=config, executor=executor)
-    if args.command == "grant":
-        if args.output.exists():
-            raise ClientError("对接码输出文件已存在，未签发新许可")
-        created = await client.create_grant(request=GrantRequest(resource_ids=args.resource_id, expires_in_seconds=args.expires_in))
-        access = AccessConfig(hub_url=config.hub_url, node_id=config.node_id, grant_id=created.grant_id, access_token=created.access_token, expires_at=created.expires_at)
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGINT, signal.SIGTERM):
         try:
-            access.save(path=args.output)
-        except OSError:
-            try:
-                await client.revoke(grant_id=created.grant_id)
-            except ClientError:
-                raise ClientError(f"对接码保存失败，撤销未确认；请检查许可 {created.grant_id}") from None
-            raise ClientError("对接码保存失败，本次许可已撤销") from None
-        print(f"许可 {created.grant_id} 的对接码已保存：{args.output}")
-    elif args.command == "revoke":
-        await client.revoke(grant_id=args.grant_id)
-        print(f"许可已撤销：{args.grant_id}")
-    elif args.command == "run":
-        stop = asyncio.Event()
-        loop = asyncio.get_running_loop()
-        for signum in (signal.SIGINT, signal.SIGTERM):
-            try:
-                loop.add_signal_handler(signum, stop.set)
-            except NotImplementedError:
-                pass
-        await client.run(stop=stop)
+            loop.add_signal_handler(signum, stop.set)
+        except NotImplementedError:
+            pass
+    await client.run(stop=stop)
 
 
 def main() -> None:
@@ -100,14 +78,8 @@ def main() -> None:
     register.add_argument("--enrollment-token-file", type=Path)
     register.add_argument("--name", default=socket.gethostname())
     commands.add_parser("run", help="读取 YAML，登记、启动并执行本机 Python 工具")
-    for command in [register, commands.add_parser("grant", help="创建独立对接码"), commands.add_parser("revoke", help="撤销对接码")]:
-        command.add_argument("--config", type=Path, default=Path(".runbridge/node.json"))
-    grant = commands.choices["grant"]
-    grant.add_argument("--output", type=Path, required=True)
-    grant.add_argument("--resource-id", action="append")
-    grant.add_argument("--expires-in", type=float)
-    commands.choices["revoke"].add_argument("grant_id")
-    inspect = commands.add_parser("inspect", help="使用对接码查询节点和能力")
+    register.add_argument("--config", type=Path, default=Path(".runbridge/node.json"))
+    inspect = commands.add_parser("inspect", help="可选诊断：使用Hub租约访问文件查询节点和能力")
     inspect.add_argument("node_id")
     inspect.add_argument("--access-file", type=Path)
     inspect.add_argument("--hub-url")

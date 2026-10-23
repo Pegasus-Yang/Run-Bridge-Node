@@ -13,7 +13,7 @@
 ```yaml
 tools:
   playwright:
-    resource_id: chrome  # 自定义资源名；省略仍默认 chromium，grant 必须一致。
+    resource_id: chrome  # 自定义资源名；省略仍默认 chromium，调用方会话选择须一致。
     mode: borrowed  # 必填以选择已有浏览器；默认是 managed。
     authorization_scope: BROWSER_INSTANCE  # 必填，明确授权整个实例。
     cdp_endpoint: ws://127.0.0.1:9222/devtools/browser/实际ID  # 本机固定实例，禁止查询参数或凭据。
@@ -29,4 +29,4 @@ tools:
 
 如需该模式的持续画面，安装 Node `[visual]` extra，见[画面采集](浏览器画面采集.md)。普通操作不要求它。MCP 的 browser_start 当前只使用 managed；borrowed 通过 Hub 的项目 HTTP 合同操作。
 
-完成后回到[部署手册](../deployment/部署与运行.md)第 5 步，用资源 ID `chrome` 签发许可、检查 READY/FREE，并另外告诉调用方应操作页面的精确 URL。
+完成后回到[部署手册](../deployment/部署与运行.md)第 5 步，交付资源ID `chrome`，由调用方从Hub领取Node并检查READY/FREE，并另外告诉调用方应操作页面的精确 URL。

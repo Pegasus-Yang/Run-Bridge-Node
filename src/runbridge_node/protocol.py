@@ -75,30 +75,6 @@ class RegistrationResult(Model):
     created: bool
 
 
-class GrantRequest(Model):
-    """节点所有者创建对接许可。"""
-
-    resource_ids: list[Identifier] | None = None
-    expires_in_seconds: float | None = Field(default=None, gt=0, le=31_536_000)
-
-
-class GrantView(Model):
-    """许可查询不包含凭据原值。"""
-
-    grant_id: Identifier
-    node_id: Identifier
-    resource_ids: list[Identifier] | None
-    created_at: AwareDatetime
-    expires_at: AwareDatetime | None
-    revoked_at: AwareDatetime | None
-
-
-class GrantCreated(GrantView):
-    """新凭据只在创建时交付一次。"""
-
-    access_token: str
-
-
 class NodeView(Model):
     """节点当前连接与能力快照的查询结果。"""
 

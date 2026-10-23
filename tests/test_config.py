@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from runbridge_node.capabilities import probe_capabilities
-from runbridge_node.config import NodeConfig
+from runbridge_node.config import AccessConfig, NodeConfig
 
 
 def test_identity_file_is_private_and_never_overwritten(tmp_path):
@@ -44,3 +44,29 @@ def test_probe_reports_installed_tools_without_fake_ready_devices():
     assert backends["http"].installed is True
     for name in ["http", "playwright", "appium", "adb"]:
         assert backends[name].coverage_status == "NOT_IMPLEMENTED"
+
+
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_hub_access_file_keeps_five_fields_and_supports_yaml(tmp_path, extension):
+    import json
+    import yaml
+
+    values = {"hub_url": "https://hub.test/prefix", "node_id": "node_a", "grant_id": "grant_a", "access_token": "test-access-" + "a" * 40, "expires_at": "2030-01-01T01:00:00+00:00"}
+    path = tmp_path / f"access.{extension}"
+    path.write_text(json.dumps(values) if extension == "json" else yaml.safe_dump(values))
+    access = AccessConfig.load(path=path)
+    assert access.access_token.get_secret_value() == values["access_token"]
+    assert set(access.model_dump()) == set(values)
+    with pytest.raises(ValidationError):
+        AccessConfig.model_validate({**values, "hub_token": "wrong-role"})
+
+
+@pytest.mark.parametrize("command", ["grant", "revoke"])
+def test_node_no_longer_manages_hub_grants(monkeypatch, capsys, command):
+    from runbridge_node.cli import main
+
+    monkeypatch.setattr("sys.argv", ["runbridge-node", command])
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

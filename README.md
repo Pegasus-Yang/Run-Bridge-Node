@@ -11,18 +11,18 @@ RunBridge Node 部署在浏览器设备上，主动连接已部署的 Hub，在�
 - **新建浏览器**：managed 模式为每次会话创建 Chromium，结束后回收本次进程和临时 Profile，适合独立任务及 MCP。
 - **复用已有 Chrome**：borrowed 模式连接所有者明确授权的本机实例，释放会话时断开连接，保留原浏览器、页面与登录状态。
 - **一份配置启动**：YAML 管理 Hub 地址、身份路径和浏览器选项，首次启动自动登记并探测浏览器。
-- **按调用方授权**：签发独立访问文件，指定资源、到期时间，并可撤销许可与相关会话。
+- **统一交给 Hub 管理**：Node只登记、上报能力和执行；调用方持Hub凭据领取、续租和释放整个Node。
 - **多个独立实例**：同机可用不同配置和身份运行多个 Node；每个实例管理自己的执行资源。
 - **实际画面与清理状态**：支持受管理页面画面，borrowed 画面可选安装扩展；清理未确认时保留隔离状态。
 
-当前版本 **0.7.0**，与 Hub **0.7.0** 配套。需要 Python **3.14.x**；不需要单独安装 Node.js/npm，也无需启动或记录 Playwright BrowserServer。
+当前版本 **0.8.0**，与 Hub **0.9.0** 配套。需要 Python **3.14.x**；不需要单独安装 Node.js/npm，也无需启动或记录 Playwright BrowserServer。
 
 ## 快速部署
 
 以下操作全部在 **Node 设备**执行。先准备 Python 3.14.x 和全局 [uv](https://docs.astral.sh/uv/getting-started/installation/)，并取得：
 
 - Hub 部署者交付的可达基址及真实 `enrollment.token` 文件。
-- 发布负责人交付的 `runbridge_node-0.7.0-py3-none-any.whl`。
+- 发布负责人交付的 `runbridge_node-0.8.0-py3-none-any.whl`。
 
 将两个文件保存到 `~/Downloads/`，创建独立部署目录：
 
@@ -30,7 +30,7 @@ RunBridge Node 部署在浏览器设备上，主动连接已部署的 Hub，在�
 mkdir -p ~/runbridge-node
 cd ~/runbridge-node
 uv venv --python 3.14 .venv
-uv pip install --python .venv/bin/python "$HOME/Downloads/runbridge_node-0.7.0-py3-none-any.whl[playwright]" -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+uv pip install --python .venv/bin/python "$HOME/Downloads/runbridge_node-0.8.0-py3-none-any.whl[playwright]" -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 umask 077
 mkdir -p .runbridge
 cp -n ~/Downloads/enrollment.token .runbridge/enrollment.token
@@ -58,18 +58,11 @@ tools:
 
 ## 验证与交付
 
-另开终端回到部署目录，签发一小时访问许可并查询节点：
+将启动日志中的node_id、资源ID（默认chromium）和模式交给Hub部署者/调用方。通过Hub独立只读总览检查ONLINE及实际READY/FREE；调用方使用Hub认证查询资源池、申请独占租约，再按Hub HTTP/MCP指南验证真实动作、关闭会话及交还Node。
 
-```bash
-cd ~/runbridge-node
-.venv/bin/runbridge-node grant --expires-in 3600 --output .runbridge/access.json
-rb_node_id=$(.venv/bin/python -c 'import json; from pathlib import Path; print(json.loads(Path(".runbridge/node.json").read_text())["node_id"])')
-.venv/bin/runbridge-node inspect "$rb_node_id" --access-file .runbridge/access.json
-```
+Node不再提供grant/revoke，也不保存Hub申请令牌。node.json和登记附件留在设备端。inspect和session命令保留为可选诊断工具，需要调用方已从Hub取得的有效access.json或YAML；它们不是登记后必须执行的授权步骤。
 
-确认 `connection_status=ONLINE`、`capabilities_stale=false`，资源 `chromium` 为 `READY/FREE`。随后按[快速开始的会话示例](doc/user-guide/快速开始.md#验证一次真实浏览器会话)验证浏览器创建与释放，确认 `cleanup=COMPLETE`。
-
-将生成的 **access.json** 和资源 ID **chromium** 私密交给调用方。访问文件由程序生成，不要手写令牌；`node.json` 和登记文件继续由所有者保管。调用方按 Hub 项目的 HTTP/MCP 手册操作。
+默认Node租期3600秒、空闲回收600秒，最大租期默认一天，后两项由Hub配置；浏览器会话租期仍为1～3600秒。整批结束需单独释放Node，不能仅关闭浏览器。操作以Hub的《Node使用权租约接口》《DSH-Test-Plugin对接指南》为准。
 
 ## 使用与维护
 
@@ -81,7 +74,7 @@ rb_node_id=$(.venv/bin/python -c 'import json; from pathlib import Path; print(j
 | 选择新浏览器或已有登录环境 | [受管理 Chromium](doc/user-guide/Playwright快速开始.md)、[Chrome 复用](doc/user-guide/Chrome复用快速开始.md) |
 | 同机多个 Node | [多实例部署](doc/deployment/同机运行多个Node.md) |
 | 画面、钥匙链提示和私有测试数据 | [画面采集](doc/user-guide/浏览器画面采集.md)、[浏览器凭据与测试数据](doc/deployment/浏览器凭据与测试数据.md) |
-| 故障、升级与许可管理 | [运行与排障](doc/deployment/运行与排障.md)、[快速开始](doc/user-guide/快速开始.md#日常许可管理) |
+| 故障、升级与许可管理 | [运行与排障](doc/deployment/运行与排障.md)、[快速开始](doc/user-guide/快速开始.md#使用权由-hub-分配) |
 
 ## 开发
 

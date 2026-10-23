@@ -1,11 +1,11 @@
 # Node 文档导航
 
-当前操作手册适用于 Node/Hub **0.7.0**。
+当前操作手册适用于 Node **0.8.0** / Hub **0.9.0**。
 
 | 阅读目的 | 文档 |
 | --- | --- |
 | 从零部署并交付资源 | [部署与运行](deployment/部署与运行.md) |
-| 快速安装、浏览器验证、日常许可 | [快速开始](user-guide/快速开始.md) |
+| 快速安装、设备交付、可选诊断 | [快速开始](user-guide/快速开始.md) |
 | 每次新建浏览器 | [受管理 Chromium](user-guide/Playwright快速开始.md) |
 | 复用原有页面和登录 | [已有 Chrome](user-guide/Chrome复用快速开始.md) |
 | 一台机器提供多个资源 | [同机多个 Node](deployment/同机运行多个Node.md) |
@@ -18,8 +18,8 @@
 | 版本与本地 tag | [版本发布记录](project/版本发布记录.md)、[本地打包与安装检查](development/版本发布与本地打包.md) |
 | 开发者 | [本地开发与联调](development/本地开发与联调.md)、[工具适配方案](design/Python工具执行改造方案.md) |
 
-旧版本的 npm BrowserServer、原生协议隧道、开发协议副本和旧验收记录是历史资料，不代表 0.7.0 行为。Node 用户的操作路线不包含 Hub 部署或同机双端联调。
+旧版本的 npm BrowserServer、原生协议隧道、开发协议副本和旧验收记录是历史资料，不代表 0.8.0 行为。Node 用户的操作路线不包含 Hub 部署或同机双端联调。
 
-验证记录：[快速上手文档验收](project/快速上手文档验收.md)、[发布隔离验收](project/Python工具执行验收记录.md)、[日常环境升级与功能验收](project/日常环境升级与功能验收.md)。
+验证记录：[Node使用权迁移验收](project/Node使用权迁移验收.md)、[快速上手文档验收](project/快速上手文档验收.md)、[发布隔离验收](project/Python工具执行验收记录.md)、[日常环境升级与功能验收](project/日常环境升级与功能验收.md)。
 
 `design/` 是评审记录，旧阶段验收、候选元数据 JSON 和 `project/history/` 保留原日期与语境；正文中当时的“当前”不代表现行部署要求。Node 用户按上表当前手册操作。

@@ -1,6 +1,6 @@
 # Python worker 执行与清理
 
-当前 Node 0.7.0：每个会话使用当前 Node `.venv` 的 Python 启动一个 `runbridge_node.worker` 进程。主进程管理控制心跳、资源占用、出站执行连接和清理；worker 持有 Playwright 及对象表，显式分派白名单动作。通用 worker 只处理工具错误、信封、队列和结果，不导入 Playwright。
+当前 Node 0.8.0：每个会话使用当前 Node `.venv` 的 Python 启动一个 `runbridge_node.worker` 进程。主进程管理控制心跳、资源占用、出站执行连接和清理；worker 持有 Playwright 及对象表，显式分派白名单动作。通用 worker 只处理工具错误、信封、队列和结果，不导入 Playwright。
 
 managed 使用 Python chromium.launch，新建 context/page；borrowed 使用 Python connect_over_cdp(no_defaults=True)，枚举已有页面。无需 npm BrowserServer、launchServer 或导出的原生 wsEndpoint。内部 Python driver 的存在是 Playwright 包自己的实现，项目不要求单独的系统 Node.js。
 

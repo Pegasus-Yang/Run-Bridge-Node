@@ -13,7 +13,7 @@ from runbridge_node.capabilities import probe_capabilities
 from runbridge_node.config import NodeConfig, validate_hub_url
 from runbridge_node.visual_protocol import NodeQueryView
 from runbridge_node.executor import PlaywrightExecutor
-from runbridge_node.protocol import OutgoingAdapter, SessionOpen, SessionStop, SessionPrepared, SessionClosed, Acknowledgement, CapabilityReport, CapabilitySnapshot, ControlError, GrantCreated, GrantRequest, Heartbeat, RegistrationResult, Welcome
+from runbridge_node.protocol import OutgoingAdapter, SessionOpen, SessionStop, SessionPrepared, SessionClosed, Acknowledgement, CapabilityReport, CapabilitySnapshot, ControlError, Heartbeat, RegistrationResult, Welcome
 
 
 logger = logging.getLogger(__name__)
@@ -68,22 +68,6 @@ class NodeClient:
         payload = {"node_id": self.config.node_id, "name": self.config.name, "node_token": self.config.node_token.get_secret_value()}
         result = await request_json(hub_url=self.config.hub_url, method="POST", path="/v1/nodes/register", token=enrollment_token, body=payload)
         return RegistrationResult.model_validate(result)
-
-    async def create_grant(self, *, request: GrantRequest) -> GrantCreated:
-        """创建独立对接许可。
-
-        :param request: 许可范围与期限。
-        :returns: 一次性交付的对接码。
-        """
-        result = await request_json(hub_url=self.config.hub_url, method="POST", path=f"/v1/nodes/{self.config.node_id}/grants", token=self.config.node_token.get_secret_value(), body=request.model_dump(mode="json"))
-        return GrantCreated.model_validate(result)
-
-    async def revoke(self, *, grant_id: str) -> None:
-        """撤销对接许可，不更改节点身份。
-
-        :param grant_id: 许可 ID。
-        """
-        await request_json(hub_url=self.config.hub_url, method="DELETE", path=f"/v1/nodes/{self.config.node_id}/grants/{grant_id}", token=self.config.node_token.get_secret_value())
 
     async def run(self, *, stop: asyncio.Event) -> None:
         """维持控制连接；认证错误与连接被替换时停止。

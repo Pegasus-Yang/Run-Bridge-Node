@@ -8,4 +8,4 @@
 
 `run --settings node.yaml` 一次完成登记、实际能力探测和上线。探测会创建并关闭一个专用浏览器；此时没有任务会话。随后由调用方创建会话，Node 为该会话启动独立 worker。关闭、到期、撤销会回收本次 Chromium 与临时 Profile；无法确认时报告 UNKNOWN 并隔离资源。
 
-继续部署手册第 5 步签发与检查，无需再启动一个 Node。配置默认值见[带注释样例](../reference/examples/Node启动配置.yaml)。
+继续部署手册第 5 步上线检查与设备标识交付，无需再启动一个 Node。配置默认值见[带注释样例](../reference/examples/Node启动配置.yaml)。
