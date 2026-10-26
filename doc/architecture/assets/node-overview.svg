@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title">
+<title id="title">RunBridge Node 执行模式</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#57606a"/></marker></defs>
+<rect width="1200" height="400" fill="#ffffff"/>
+<g font-family="Arial, Noto Sans, sans-serif" fill="#1f2328">
+<rect x="395" y="10" width="800" height="345" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+<text x="795" y="34" text-anchor="middle" font-size="19" font-weight="normal">浏览器所在设备</text>
+<rect x="15" y="120" width="210" height="110" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="2"/>
+<text x="120.0" y="154.0" text-anchor="middle" font-size="22" font-weight="bold">RunBridge Hub</text>
+<text x="120.0" y="182.0" text-anchor="middle" font-size="19" font-weight="normal">HTTP / MCP</text>
+<text x="120.0" y="210.0" text-anchor="middle" font-size="19" font-weight="normal">Node 租约</text>
+<rect x="425" y="120" width="200" height="110" rx="8" fill="#e8f5fc" stroke="#027bb5" stroke-width="2"/>
+<text x="525.0" y="182.0" text-anchor="middle" font-size="22" font-weight="bold">RunBridge Node</text>
+<rect x="705" y="120" width="190" height="110" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="2"/>
+<text x="800.0" y="168.0" text-anchor="middle" font-size="22" font-weight="bold">Python worker</text>
+<text x="800.0" y="196.0" text-anchor="middle" font-size="19" font-weight="normal">Playwright</text>
+<rect x="985" y="50" width="200" height="100" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="2"/>
+<text x="1085.0" y="93.0" text-anchor="middle" font-size="22" font-weight="bold">新建 Chromium</text>
+<text x="1085.0" y="121.0" text-anchor="middle" font-size="19" font-weight="normal">清理本次资源</text>
+<rect x="985" y="240" width="200" height="100" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="2"/>
+<text x="1085.0" y="283.0" text-anchor="middle" font-size="22" font-weight="bold">已有 Chrome</text>
+<text x="1085.0" y="311.0" text-anchor="middle" font-size="19" font-weight="normal">断开项目连接</text>
+<path d="M231 175 H419" fill="none" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="325" y="150" text-anchor="middle" font-size="18" font-weight="normal">WebSocket</text>
+<path d="M631 175 H699" fill="none" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M901 175 H940 V100 H979" fill="none" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="940" y="80" text-anchor="middle" font-size="17" font-weight="normal">managed</text>
+<path d="M901 175 H940 V290 H979" fill="none" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="940" y="317" text-anchor="middle" font-size="17" font-weight="normal">borrowed</text>
+<text x="600" y="386" text-anchor="middle" font-size="18" font-weight="normal">Node 主动连接 Hub，Python Playwright 在浏览器设备上执行操作。</text>
+</g>
+</svg>

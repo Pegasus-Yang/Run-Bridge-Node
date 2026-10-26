@@ -2,7 +2,7 @@
 
 [简体中文](同机运行多个Node.md) · English
 
-Each Node **0.8.1** process provides one configured Playwright resource. Multiple processes can run on the same device, but every instance needs a distinct identity. Sharing identity makes Hub treat a new connection as a reconnect and replace the old one.
+Each Node **0.8.2** process provides one configured Playwright resource. Multiple processes can run on the same device, but every instance needs a distinct identity. Sharing identity makes Hub treat a new connection as a reconnect and replace the old one.
 
 The simplest arrangement is one deployment directory and `.venv` per instance, installed using [deployment](部署与运行.en.md), with separate YAML. A shared installed CLI can also start multiple YAML files by absolute path; upgrading that environment affects all of them, so stop all affected instances first.
 

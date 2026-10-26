@@ -2,7 +2,7 @@
 
 [简体中文](README.md) · English
 
-Current user guides cover **Node 0.8.1 / Hub 0.9.2**. Start with the [README](../README.en.md#quick-start) for source installation or the [quick-start guide](user-guide/快速开始.en.md) for an existing wheel in a separate deployment directory.
+Current user guides cover **Node 0.8.2 / Hub 0.9.3**. Start with the [README](../README.en.md#quick-start) for source installation or the [quick-start guide](user-guide/快速开始.en.md) for an existing wheel in a separate deployment directory.
 
 ## Choose your reading path
 
@@ -39,10 +39,13 @@ The device maintainer hands off Node ID, resource ID, and mode; clients claim ow
 
 | Goal | Resource |
 | --- | --- |
+| Prepare a PyPI distribution | [PyPI release preparation](development/PyPI发布准备.en.md) |
 | Contribute and understand licensing | [Contributing](../CONTRIBUTING.en.md), [MIT License](../LICENSE) |
-| Develop and validate | [Local development (Chinese)](development/本地开发与联调.md), [tool adapter design (Chinese)](design/Python工具执行改造方案.md) |
+| Develop and validate | [Local development (Chinese)](development/本地开发与联调.md), [tool adapter design (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/design/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) |
 | Inspect implementation | [Code structure (Chinese)](architecture/代码结构与执行流程.md), [Python worker (Chinese)](architecture/Playwright执行与会话管理.md), [borrowed cleanup (Chinese)](architecture/Chrome复用与授权清理.md) |
 | Read releases/builds or manage GitHub presentation | [Release record (Chinese)](project/版本发布记录.md), [packaging (Chinese)](development/版本发布与本地打包.md), [GitHub settings (Chinese)](project/GitHub展示配置.md) |
-| Inspect recorded acceptance | [Lease migration (Chinese)](project/Node使用权迁移验收.md), [quick start (Chinese)](project/快速上手文档验收.md), [isolated release (Chinese)](project/Python工具执行验收记录.md), [daily environment (Chinese)](project/日常环境升级与功能验收.md) |
+| Inspect recorded acceptance | [Lease migration (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/Node%E4%BD%BF%E7%94%A8%E6%9D%83%E8%BF%81%E7%A7%BB%E9%AA%8C%E6%94%B6.md), [quick start (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B%E6%96%87%E6%A1%A3%E9%AA%8C%E6%94%B6.md), [isolated release (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E9%AA%8C%E6%94%B6%E8%AE%B0%E5%BD%95.md), [daily environment (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/%E6%97%A5%E5%B8%B8%E7%8E%AF%E5%A2%83%E5%8D%87%E7%BA%A7%E4%B8%8E%E5%8A%9F%E8%83%BD%E9%AA%8C%E6%94%B6.md) |
 
 Architecture, design, release, and historical records remain Chinese. Old npm BrowserServer, native tunnels, and early protocol copies do not describe current behavior. `design/` and `project/history/` preserve their original dates and context; records do not constitute a new live acceptance run.
+
+The source distribution includes current user documentation. Historical designs, acceptance records, and raw audit material omitted from it are linked on GitHub.

@@ -1,4 +1,4 @@
-# Node 0.8.1; UTF-8 YAML with space indentation.
+# Node 0.8.2; UTF-8 YAML with space indentation.
 # Relative local paths resolve from this file's directory; no ~, $HOME, or shell expansion.
 config_version: 2  # Only startup format 2 is accepted; also the default.
 hub_url: http://192.168.50.10:8787  # Required initially; use the real Hub base URL.

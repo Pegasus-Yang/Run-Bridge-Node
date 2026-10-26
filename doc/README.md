@@ -2,7 +2,7 @@
 
 简体中文 · [English](README.en.md)
 
-当前用户手册适用于 **Node 0.8.1 / Hub 0.9.2**。源码体验从[项目首页](../README.md#快速开始)开始，已有 wheel 的独立目录部署从[快速开始](user-guide/快速开始.md)开始。
+当前用户手册适用于 **Node 0.8.2 / Hub 0.9.3**。源码体验从[项目首页](../README.md#快速开始)开始，已有 wheel 的独立目录部署从[快速开始](user-guide/快速开始.md)开始。
 
 ## 按任务开始
 
@@ -39,10 +39,13 @@
 
 | 阅读目的 | 文档 |
 | --- | --- |
+| 准备 PyPI 分发 | [PyPI 发布准备](development/PyPI发布准备.md) |
 | 参与贡献与授权 | [贡献指南](../CONTRIBUTING.md)、[MIT License](../LICENSE) |
-| 开发与本地验证 | [本地开发与联调](development/本地开发与联调.md)、[工具适配方案](design/Python工具执行改造方案.md) |
+| 开发与本地验证 | [本地开发与联调](development/本地开发与联调.md)、[工具适配方案](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/design/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) |
 | 当前架构与源码 | [代码结构](architecture/代码结构与执行流程.md)、[Python worker](architecture/Playwright执行与会话管理.md)、[已有 Chrome 清理](architecture/Chrome复用与授权清理.md) |
 | 版本、打包与 GitHub 展示 | [版本发布记录](project/版本发布记录.md)、[版本发布与本地打包](development/版本发布与本地打包.md)、[GitHub 展示配置](project/GitHub展示配置.md) |
-| 已有验证记录 | [租约迁移验收](project/Node使用权迁移验收.md)、[快速上手验收](project/快速上手文档验收.md)、[发布隔离验收](project/Python工具执行验收记录.md)、[日常环境验收](project/日常环境升级与功能验收.md) |
+| 已有验证记录 | [租约迁移验收](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/Node%E4%BD%BF%E7%94%A8%E6%9D%83%E8%BF%81%E7%A7%BB%E9%AA%8C%E6%94%B6.md)、[快速上手验收](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B%E6%96%87%E6%A1%A3%E9%AA%8C%E6%94%B6.md)、[发布隔离验收](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E9%AA%8C%E6%94%B6%E8%AE%B0%E5%BD%95.md)、[日常环境验收](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/%E6%97%A5%E5%B8%B8%E7%8E%AF%E5%A2%83%E5%8D%87%E7%BA%A7%E4%B8%8E%E5%8A%9F%E8%83%BD%E9%AA%8C%E6%94%B6.md) |
 
 架构、设计、发布和历史验收资料保留中文。旧 npm BrowserServer、原生隧道和早期开发协议副本不代表当前行为。`design/` 与 `project/history/` 保留原日期和语境；历史记录不代表本次重新进行了运行验收。
+
+源码包保留当前用户文档；未随包分发的历史方案、验收和原始核验材料通过 GitHub 链接查阅。

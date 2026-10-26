@@ -25,6 +25,8 @@
 
 涉及方法、对象、协议或生命周期时，请核对 [Hub 实现与方法表](https://github.com/Pegasus-Yang/Run-Bridge-Hub)，并在 Pull Request 中关联需要配套的修改。
 
+PyPI 元数据、分发范围、严格检查和上传后核验见 [PyPI 发布准备](doc/development/PyPI发布准备.md)。
+
 ## 授权
 
 提交到本项目的贡献按 [MIT License](LICENSE)提供。引入第三方代码或资源时，注明来源并保留其许可证和版权声明。

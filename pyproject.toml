@@ -1,20 +1,29 @@
 [project]
 name = "runbridge-node"
-version = "0.8.1"
-description = "RunBridge 浏览器执行节点：受管理 Chromium、已有 Chrome 复用与 Playwright 执行"
-readme = "README.md"
+version = "0.8.2"
+description = "Remote browser worker for RunBridge Hub with managed Chromium and existing Chrome reuse"
+readme = { file = "README.en.md", content-type = "text/markdown" }
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Pegasus-Yang", email = "panesas2@gmail.com" }]
 keywords = ["runbridge", "browser-automation", "playwright", "chromium", "remote-browser"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP",
+]
 requires-python = ">=3.14,<3.15"
 dependencies = ["httpx>=0.28,<1", "packaging>=25", "psutil>=7,<9", "pydantic>=2.12,<3", "PyYAML>=6.0,<7", "websockets>=15,<18"]
 
 [project.urls]
 Homepage = "https://github.com/Pegasus-Yang/Run-Bridge-Node"
-Documentation = "https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.md"
-Repository = "https://github.com/Pegasus-Yang/Run-Bridge-Node.git"
+Documentation = "https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.en.md"
+"Chinese Documentation" = "https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.md"
+Repository = "https://github.com/Pegasus-Yang/Run-Bridge-Node"
 Issues = "https://github.com/Pegasus-Yang/Run-Bridge-Node/issues"
+Changelog = "https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/版本发布记录.md"
 
 [project.optional-dependencies]
 playwright = ["playwright==1.63.0"]
@@ -40,5 +49,19 @@ name = "aliyun"
 url = "http://mirrors.aliyun.com/pypi/simple/"
 default = true
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/runbridge_node"]
+
 [tool.hatch.build.targets.sdist]
-exclude = ["/doc/reference/DSH扩展修复核验记录.json", "/doc/reference/构建产物核验记录.json", "/doc/reference/文档核验记录.json", "/doc/reference/R4构建产物核验记录.json", "/doc/reference/R4文档核验记录.json", "/doc/reference/画面流构建产物核验记录.json", "/doc/reference/画面流文档核验记录.json"]
+include = [
+    "/src", "/tests", "/README.md", "/README.en.md", "/LICENSE",
+    "/CONTRIBUTING.md", "/CONTRIBUTING.en.md", "/AGENTS.md", "/.gitignore",
+    "/pyproject.toml", "/uv.lock", "/doc/README.md", "/doc/README.en.md",
+    "/doc/user-guide", "/doc/deployment", "/doc/reference",
+    "/doc/architecture", "/doc/development",
+    "/doc/project/版本发布记录.md", "/doc/project/GitHub展示配置.md",
+]
+exclude = [
+    "/doc/reference/*.json", "/doc/reference/*.png",
+    "/doc/development/protocol", "/doc/development/examples",
+]

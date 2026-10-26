@@ -27,6 +27,8 @@ Real browser tests require explicit opt-in and test-owned profiles. Borrowed tes
 
 Check the [Hub implementation](https://github.com/Pegasus-Yang/Run-Bridge-Hub) for method, object, protocol, or lifecycle changes and link any corresponding change. Repository rules are in [AGENTS.md (Chinese)](AGENTS.md); runtime guides are indexed in [English documentation](doc/README.en.md).
 
+PyPI metadata, artifact selection, strict checks, and upload verification are covered in [release preparation](doc/development/PyPI发布准备.en.md).
+
 ## License
 
 Contributions are provided under the [MIT License](LICENSE). Identify the source of third-party code or assets and retain their license and copyright notices.

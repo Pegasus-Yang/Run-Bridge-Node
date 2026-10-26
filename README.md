@@ -2,9 +2,9 @@
 
 **把本机浏览器作为程序和 Agent 可使用的远程执行资源。**
 
-简体中文 · [English](README.en.md) · [快速开始](#快速开始) · [完整文档](doc/README.md) · [更新日志](doc/project/版本发布记录.md) · [问题反馈](https://github.com/Pegasus-Yang/Run-Bridge-Node/issues)
+简体中文 · [English](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/README.en.md) · [快速开始](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/README.md#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B) · [完整文档](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.md) · [更新日志](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/project/%E7%89%88%E6%9C%AC%E5%8F%91%E5%B8%83%E8%AE%B0%E5%BD%95.md) · [问题反馈](https://github.com/Pegasus-Yang/Run-Bridge-Node/issues)
 
-[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](pyproject.toml) [![MIT](https://img.shields.io/badge/License-MIT-16a34a?style=flat-square)](LICENSE)
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/pyproject.toml) [![MIT](https://img.shields.io/badge/License-MIT-16a34a?style=flat-square)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/LICENSE)
 
 RunBridge Node 是 RunBridge 的浏览器执行端。它部署在浏览器所在设备，主动连接 [RunBridge Hub](https://github.com/Pegasus-Yang/Run-Bridge-Hub)，在独立 Python worker 中通过 Playwright 执行操作，并将结果与页面画面传回 Hub。
 
@@ -23,17 +23,7 @@ RunBridge Node 是 RunBridge 的浏览器执行端。它部署在浏览器所在
 
 ## 工作方式与模式选择
 
-```mermaid
-flowchart LR
-    Hub["RunBridge Hub<br/>HTTP / MCP · Node 租约"] <-->|"指令 / 结果 / 画面"| Node["RunBridge Node"]
-    subgraph Device["浏览器所在设备"]
-        Node --> Worker["Python worker<br/>Playwright"]
-        Worker -->|"managed"| Managed["新建 Chromium<br/>结束后回收本次资源"]
-        Worker -->|"borrowed"| Borrowed["已有 Chrome<br/>结束后断开连接"]
-    end
-    classDef executor fill:#e8f5fc,stroke:#027bb5,color:#12344a
-    class Node executor
-```
+![RunBridge Node 架构与执行方式](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/architecture/assets/node-overview.svg?raw=true)
 
 | 选择 | managed：独立浏览器 | borrowed：已有 Chrome |
 | --- | --- | --- |
@@ -42,11 +32,23 @@ flowchart LR
 | 会话结束 | 回收本次浏览器与临时 Profile | 断开连接，保留原页面和登录状态 |
 | 页面画面 | 直接采集受管理页面 | 按需安装可选 `visual` 扩展 |
 | 调用入口 | Hub HTTP / MCP | Hub HTTP |
-| 详细步骤 | [受管理 Chromium](doc/user-guide/Playwright快速开始.md) | [Chrome 复用](doc/user-guide/Chrome复用快速开始.md) |
+| 详细步骤 | [受管理 Chromium](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/Playwright%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md) | [Chrome 复用](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/Chrome%E5%A4%8D%E7%94%A8%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md) |
 
 Node 的在线状态、资源占用和能力可在 [Hub 节点总览](https://github.com/Pegasus-Yang/Run-Bridge-Hub/blob/main/doc/user-guide/节点总览.md)查看。managed 默认无头运行，页面画面可经 Hub 订阅；Node 不提供独立的网页管理界面。
 
 ## 快速开始
+
+### 从 PyPI 安装（对应版本发布后）
+
+先按下文准备 Python 3.14、uv 与 Hub 登记材料；尚未上传时使用源码安装路线。选择本方式后直接继续第 2 步。
+
+```bash
+mkdir -p ~/runbridge-node
+cd ~/runbridge-node
+uv venv --python 3.14 .venv
+uv pip install --python .venv/bin/python "runbridge-node[playwright]==0.8.2" -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+.venv/bin/python -m playwright install chromium
+```
 
 ### 1. 安装 Node 并准备浏览器
 
@@ -61,7 +63,7 @@ uv sync --locked --no-dev --extra playwright -i http://mirrors.aliyun.com/pypi/s
 .venv/bin/python -m playwright install chromium
 ```
 
-`uv` 在仓库根目录创建 `.venv`。Linux 还需准备浏览器系统库，见 [Playwright 浏览器说明](https://playwright.dev/python/docs/browsers)。已有 wheel 的独立目录安装方法见[部署与运行](doc/deployment/部署与运行.md)。
+`uv` 在仓库根目录创建 `.venv`。Linux 还需准备浏览器系统库，见 [Playwright 浏览器说明](https://playwright.dev/python/docs/browsers)。已有 wheel 的独立目录安装方法见[部署与运行](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/deployment/%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E8%A1%8C.md)。
 
 ### 2. 保存登记文件与配置
 
@@ -72,7 +74,7 @@ cp -n ~/Downloads/enrollment.token .runbridge/enrollment.token
 chmod 600 .runbridge/enrollment.token
 ```
 
-在仓库根目录创建 `node.yaml`，把 `hub_url` 换成收到的实际 Hub 基址：
+在当前安装目录创建 `node.yaml`，把 `hub_url` 换成收到的实际 Hub 基址：
 
 ```yaml
 hub_url: http://hub.example:8787
@@ -95,7 +97,7 @@ tools:
 
 ## 支持范围
 
-- 当前 Node **0.8.1**，配套 Hub **0.9.2**，需要 Python **3.14.x** 和匹配的 Python Playwright；无需单独部署 Node.js/npm 或 Playwright BrowserServer。
+- 当前 Node **0.8.2**，配套 Hub **0.9.3**，需要 Python **3.14.x** 和匹配的 Python Playwright；无需单独部署 Node.js/npm 或 Playwright BrowserServer。
 - 当前显式实现 **33 项项目方法**，以 [Hub 方法表](https://github.com/Pegasus-Yang/Run-Bridge-Hub/blob/main/doc/reference/Playwright方法表.md)为准。Hub 提供 HTTP / MCP 入口，Node 负责本机执行。
 - 同一 Node 的浏览器资源同时只接受一个活动会话；同机并行任务可部署独立 Node 实例。
 - borrowed 授权范围为整个浏览器实例，已发生的页面操作会保留；资源释放不撤销业务修改。
@@ -105,20 +107,20 @@ tools:
 
 | 从这里开始 | 内容 |
 | --- | --- |
-| [完整文档导航](doc/README.md) | 按设备维护、调用方交接和排障划分的阅读路线，含英文入口 |
-| [快速开始](doc/user-guide/快速开始.md) · [部署与运行](doc/deployment/部署与运行.md) | 安装、登记、上线、交付、重启和长期运行 |
-| [参数详解](doc/reference/参数详解.md) · [注释 YAML](doc/reference/examples/Node启动配置.yaml) | CLI、默认值、路径规则与浏览器选项 |
-| [受管理 Chromium](doc/user-guide/Playwright快速开始.md) · [Chrome 复用](doc/user-guide/Chrome复用快速开始.md) | 新建浏览器或使用已有登录环境 |
-| [同机多个 Node](doc/deployment/同机运行多个Node.md) | 独立身份、多实例和并行任务 |
-| [页面画面](doc/user-guide/浏览器画面采集.md) · [MCP 准备](doc/user-guide/MCP对接准备.md) | 画面能力与 Agent 资源准备 |
-| [浏览器凭据与测试数据](doc/deployment/浏览器凭据与测试数据.md) · [运行与排障](doc/deployment/运行与排障.md) | 凭据提示、私有数据、断线、清理与升级 |
+| [完整文档导航](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.md) | 按设备维护、调用方交接和排障划分的阅读路线，含英文入口 |
+| [快速开始](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md) · [部署与运行](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/deployment/%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E8%A1%8C.md) | 安装、登记、上线、交付、重启和长期运行 |
+| [参数详解](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/reference/%E5%8F%82%E6%95%B0%E8%AF%A6%E8%A7%A3.md) · [注释 YAML](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/reference/examples/Node%E5%90%AF%E5%8A%A8%E9%85%8D%E7%BD%AE.yaml) | CLI、默认值、路径规则与浏览器选项 |
+| [受管理 Chromium](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/Playwright%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md) · [Chrome 复用](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/Chrome%E5%A4%8D%E7%94%A8%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md) | 新建浏览器或使用已有登录环境 |
+| [同机多个 Node](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/deployment/%E5%90%8C%E6%9C%BA%E8%BF%90%E8%A1%8C%E5%A4%9A%E4%B8%AANode.md) | 独立身份、多实例和并行任务 |
+| [页面画面](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E6%B5%8F%E8%A7%88%E5%99%A8%E7%94%BB%E9%9D%A2%E9%87%87%E9%9B%86.md) · [MCP 准备](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/MCP%E5%AF%B9%E6%8E%A5%E5%87%86%E5%A4%87.md) | 画面能力与 Agent 资源准备 |
+| [浏览器凭据与测试数据](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/deployment/%E6%B5%8F%E8%A7%88%E5%99%A8%E5%87%AD%E6%8D%AE%E4%B8%8E%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE.md) · [运行与排障](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/deployment/%E8%BF%90%E8%A1%8C%E4%B8%8E%E6%8E%92%E9%9A%9C.md) | 凭据提示、私有数据、断线、清理与升级 |
 
 ## 开发与贡献
 
 欢迎通过 [Issues](https://github.com/Pegasus-Yang/Run-Bridge-Node/issues) 反馈或提交 Pull Request。请附上两端版本、操作系统、浏览器版本与模式、复现步骤和已隐藏秘密的错误信息。
 
-源码开发使用根目录 `.venv`，依赖同步、pytest 与隔离浏览器测试见[本地开发与联调](doc/development/本地开发与联调.md)；提交范围与验证要求见[贡献指南](CONTRIBUTING.md)。项目由 [Pegasus-Yang（天马）](https://github.com/Pegasus-Yang)维护。
+源码开发使用根目录 `.venv`，依赖同步、pytest 与隔离浏览器测试见[本地开发与联调](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/development/%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91%E4%B8%8E%E8%81%94%E8%B0%83.md)；提交范围与验证要求见[贡献指南](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/CONTRIBUTING.md)。项目由 [Pegasus-Yang（天马）](https://github.com/Pegasus-Yang)维护。
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE)。第三方依赖遵循各自的许可证。
+本项目采用 [MIT License](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/LICENSE)。第三方依赖遵循各自的许可证。
