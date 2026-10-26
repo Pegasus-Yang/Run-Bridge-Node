@@ -1,5 +1,7 @@
 # 受管理 Chromium
 
+简体中文 · [English](Playwright快速开始.en.md)
+
 此模式由 Node 的 Python Playwright `chromium.launch()` 为每个会话新建浏览器，初始 context 的 viewport=1280×720、locale=zh-CN，并创建 about:blank 页面。适合新任务和 MCP，不保留上次会话登录。
 
 首次部署按[完整手册](../deployment/部署与运行.md)执行，在 YAML 配置 `tools.playwright.mode: managed`。使用 `[playwright]` 安装本项目时已经在同一环境安装 Python Playwright，无需单独的 npm 安装命令。

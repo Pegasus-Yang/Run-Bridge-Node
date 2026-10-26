@@ -1,0 +1,37 @@
+# Node 0.8.1; UTF-8 YAML with space indentation.
+# Relative local paths resolve from this file's directory; no ~, $HOME, or shell expansion.
+config_version: 2  # Only startup format 2 is accepted; also the default.
+hub_url: http://192.168.50.10:8787  # Required initially; use the real Hub base URL.
+name: office-node  # Initial identity name; default hostname; does not rename existing identity.
+identity_file: .runbridge/node.json  # Generated initially, retained on restart.
+enrollment_token_file: .runbridge/enrollment.token  # Original single-line enrollment file from Hub.
+# After enrollment, omit this field to reconnect or retain it for idempotent enrollment confirmation.
+# Without a file use RUNBRIDGE_ENROLLMENT_TOKEN; an explicit file takes precedence.
+tools:  # Default {}; without a tool only the control connection is provided.
+  playwright:  # Current implemented adapter.
+    resource_id: chromium  # Default; clients must choose the same ID.
+    mode: managed  # Default; launch Chromium per session. Alternative: borrowed.
+    # browser_cache_directory defaults to PLAYWRIGHT_BROWSERS_PATH or Playwright's cache.
+    # browser_cache_directory: /absolute/path/to/shared-browsers
+    launch_options:  # Managed only; Python Playwright snake_case.
+      headless: true  # Default true; false needs a working desktop.
+      timeout: 20000  # Launch default; 1-30000 ms, no unlimited timeout.
+      # channel: chrome  # Default uses matching Chromium; owner validates custom browser compatibility.
+      # executable_path: /absolute/path/to/chromium
+      # args: []  # Append browser arguments to SDK defaults.
+      # Project always appends --password-store=basic and --use-mock-keychain for dedicated storage.
+      # ignore_default_args: []  # Filtering SDK defaults does not remove project storage arguments.
+      # chromium_sandbox: false  # SDK default false; enabling requires system support.
+      # env: {LANG: "zh_CN.UTF-8"}  # Default inherits process environment; retain system/desktop needs.
+      # downloads_path: downloads  # Default SDK temporary path; custom value relative to YAML.
+      # traces_dir: traces  # Default no user directory; does not enable a remote trace API.
+      # artifacts_dir: artifacts  # Default SDK temporary directory; relative to YAML when specified.
+      # slow_mo: 0  # Default 0 ms; extra delay for observation, not an action timeout.
+      # proxy: {server: "http://proxy.example:8080"}  # Browser website traffic only.
+# For existing Chrome, replace tools with the following and remove managed launch/cache fields:
+# tools:
+#   playwright:
+#     resource_id: chrome  # Optional custom name; omitted still defaults to chromium.
+#     mode: borrowed
+#     authorization_scope: BROWSER_INSTANCE  # Explicit authorization for every page in this instance.
+#     cdp_endpoint: ws://127.0.0.1:9222/devtools/browser/ACTUAL_BROWSER_ID

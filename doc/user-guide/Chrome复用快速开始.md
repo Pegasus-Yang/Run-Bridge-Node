@@ -1,5 +1,7 @@
 # 已有 Chrome 复用
 
+简体中文 · [English](Chrome复用快速开始.en.md)
+
 本页在 Node 设备操作，适用于已经由所有者准备、允许本机 CDP 连接的 Chrome 实例。Node 不启动或重启该浏览器；浏览器的远程调试启用方式、专用 Profile 和版本要求由 [Chrome 官方文档](https://developer.chrome.com/blog/remote-debugging-port)及设备管理员管理。
 
 ## 确定授权实例
