@@ -38,11 +38,13 @@ Inspect online status, occupancy, and capabilities in the [Hub dashboard](https:
 
 ## Quick start
 
-Download wheels from [GitHub Releases](https://github.com/Pegasus-Yang/Run-Bridge-Node/releases), then follow the [separate-directory installation guide](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.en.md). Source and post-publication PyPI installation routes follow below.
+Node **0.8.2** is available on [PyPI](https://pypi.org/project/runbridge-node/0.8.2/). Install it with the commands below, or download wheels from [GitHub Releases](https://github.com/Pegasus-Yang/Run-Bridge-Node/releases) and follow the [separate-directory installation guide](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.en.md). A source installation route is also provided below.
 
-### Install from PyPI after this version is published
+### Install from PyPI
 
-Prepare Python 3.14, uv, and Hub enrollment material as described below. Until upload, use the source route. With this installation, continue at step 2.
+Prepare Python 3.14, uv, and Hub enrollment material as described below. With this installation, continue at step 2.
+
+Mirrors may lag behind the first release. If the Aliyun mirror below does not yet list this version, download its wheel from [PyPI files](https://pypi.org/project/runbridge-node/0.8.2/#files) and follow the separate-directory installation guide.
 
 ```bash
 mkdir -p ~/runbridge-node
