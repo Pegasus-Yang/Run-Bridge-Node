@@ -38,6 +38,8 @@ Inspect online status, occupancy, and capabilities in the [Hub dashboard](https:
 
 ## Quick start
 
+Download wheels from [GitHub Releases](https://github.com/Pegasus-Yang/Run-Bridge-Node/releases), then follow the [separate-directory installation guide](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.en.md). Source and post-publication PyPI installation routes follow below.
+
 ### Install from PyPI after this version is published
 
 Prepare Python 3.14, uv, and Hub enrollment material as described below. Until upload, use the source route. With this installation, continue at step 2.

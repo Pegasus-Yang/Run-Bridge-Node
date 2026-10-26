@@ -39,6 +39,7 @@
 
 | 阅读目的 | 文档 |
 | --- | --- |
+| 自动验证与 GitHub Release | [GitHub Actions](development/GitHubActions与Release.md) |
 | 准备 PyPI 分发 | [PyPI 发布准备](development/PyPI发布准备.md) |
 | 参与贡献与授权 | [贡献指南](../CONTRIBUTING.md)、[MIT License](../LICENSE) |
 | 开发与本地验证 | [本地开发与联调](development/本地开发与联调.md)、[工具适配方案](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/design/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) |

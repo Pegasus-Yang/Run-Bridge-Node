@@ -38,6 +38,8 @@ Node 的在线状态、资源占用和能力可在 [Hub 节点总览](https://gi
 
 ## 快速开始
 
+安装包可从 [GitHub Releases](https://github.com/Pegasus-Yang/Run-Bridge-Node/releases) 下载，再按[独立目录安装指南](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/user-guide/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B.md)部署。下方同时保留源码和对应版本上传后的 PyPI 安装方式。
+
 ### 从 PyPI 安装（对应版本发布后）
 
 先按下文准备 Python 3.14、uv 与 Hub 登记材料；尚未上传时使用源码安装路线。选择本方式后直接继续第 2 步。

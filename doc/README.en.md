@@ -39,6 +39,7 @@ The device maintainer hands off Node ID, resource ID, and mode; clients claim ow
 
 | Goal | Resource |
 | --- | --- |
+| Validate and publish GitHub Releases | [GitHub Actions](development/GitHubActions与Release.en.md) |
 | Prepare a PyPI distribution | [PyPI release preparation](development/PyPI发布准备.en.md) |
 | Contribute and understand licensing | [Contributing](../CONTRIBUTING.en.md), [MIT License](../LICENSE) |
 | Develop and validate | [Local development (Chinese)](development/本地开发与联调.md), [tool adapter design (Chinese)](https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/design/Python%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) |
