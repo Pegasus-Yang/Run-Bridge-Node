@@ -1,10 +1,20 @@
 [project]
 name = "runbridge-node"
 version = "0.8.1"
-description = "RunBridge 本机节点客户端"
+description = "RunBridge 浏览器执行节点：受管理 Chromium、已有 Chrome 复用与 Playwright 执行"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Pegasus-Yang", email = "panesas2@gmail.com" }]
+keywords = ["runbridge", "browser-automation", "playwright", "chromium", "remote-browser"]
 requires-python = ">=3.14,<3.15"
 dependencies = ["httpx>=0.28,<1", "packaging>=25", "psutil>=7,<9", "pydantic>=2.12,<3", "PyYAML>=6.0,<7", "websockets>=15,<18"]
+
+[project.urls]
+Homepage = "https://github.com/Pegasus-Yang/Run-Bridge-Node"
+Documentation = "https://github.com/Pegasus-Yang/Run-Bridge-Node/blob/main/doc/README.md"
+Repository = "https://github.com/Pegasus-Yang/Run-Bridge-Node.git"
+Issues = "https://github.com/Pegasus-Yang/Run-Bridge-Node/issues"
 
 [project.optional-dependencies]
 playwright = ["playwright==1.63.0"]
