@@ -39,6 +39,7 @@ The device maintainer hands off Node ID, resource ID, and mode; clients claim ow
 
 | Goal | Resource |
 | --- | --- |
+| Follow the complete publishing workflow and pitfalls | [Release workflow](development/发布流程与注意事项.en.md) |
 | Validate and publish GitHub Releases | [GitHub Actions](development/GitHubActions与Release.en.md) |
 | Prepare a PyPI distribution | [PyPI release preparation](development/PyPI发布准备.en.md) |
 | Contribute and understand licensing | [Contributing](../CONTRIBUTING.en.md), [MIT License](../LICENSE) |
